@@ -1,0 +1,14 @@
+{
+  "name": "Carnet de salon · Test",
+  "short_name": "Test CDS",
+  "start_url": "/test/",
+  "scope": "/test/",
+  "display": "standalone",
+  "background_color": "#F4F5FB",
+  "theme_color": "#090D24",
+  "lang": "fr",
+  "icons": [
+    { "src": "icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

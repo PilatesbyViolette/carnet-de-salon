@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carnet de salon · Test de connexion</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icone-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Test CDS">
+  <!-- Page de test de l'étape 2 (docs/claude_carnet_de_salon_test_connexion.md). Supprimée avant la recette. -->
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; line-height: 1.4; }
+    button, label.bouton { display: block; width: 100%; min-height: 48px; margin: 8px 0; font-size: 16px; box-sizing: border-box; }
+    label.bouton { border: 1px solid #888; border-radius: 4px; text-align: center; line-height: 48px; background: #eee; }
+    #journal { white-space: pre-wrap; word-break: break-word; font-family: monospace; font-size: 12px; background: #f2f2f2; padding: 8px; }
+    .erreur { color: #b00020; font-weight: bold; }
+    #texte { white-space: pre-wrap; background: #fffbe6; padding: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Test de connexion</h1>
+  <p>Mode d'affichage : <strong id="mode">?</strong></p>
+  <p style="font-size:12px" id="appareil"></p>
+
+  <h2>Connexion</h2>
+  <button id="boutonA">Connexion A : fenêtre (Google Identity Services)</button>
+  <button id="boutonB">Connexion B : redirection</button>
+  <button id="boutonRenouveler">Renouveler</button>
+  <p>Compte : <strong id="compte">non connecté</strong><br>
+     Variante : <span id="variante">aucune</span><br>
+     Jeton obtenu à : <span id="heure">-</span> · expires_in : <span id="duree">-</span> s</p>
+
+  <h2>Drive</h2>
+  <label class="bouton">Photographier une carte
+    <input id="photo" type="file" accept="image/*" capture="environment" hidden>
+  </label>
+  <p>Tableau : <span id="tableau">-</span></p>
+  <p>Texte lu :</p>
+  <div id="texte">-</div>
+
+  <h2>Journal</h2>
+  <button id="boutonVider">Vider le journal</button>
+  <div id="journal"></div>
+
+  <script src="test.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async onload="preparerGis()" onerror="noter('Script Google (gsi/client) non chargé', true)"></script>
+</body>
+</html>
