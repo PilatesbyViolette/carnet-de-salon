@@ -2,11 +2,205 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Carnet de salon</title>
+  <meta name="description" content="Captez vos contacts de salon en trois gestes et relancez-les au bon moment. Tout reste dans votre compte Google.">
+  <meta name="theme-color" content="#090D24">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Carnet">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/images/icone-180.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png">
+  <link rel="preload" href="/polices/archivo-var-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
-  <h1>Carnet de salon</h1>
-  <p>Optimisons.ai · « L'IA, simplement. »</p>
+  <!-- Bandeaux globaux -->
+  <button id="bandeau-maj" class="bandeau bandeau-maj" type="button" hidden>Nouvelle version disponible, toucher pour recharger</button>
+  <div id="bandeau-erreur" class="bandeau bandeau-erreur" role="alert" hidden><span></span><small>Toucher pour fermer</small></div>
+
+  <main>
+    <!-- Connexion (première ouverture) -->
+    <section id="ecran-connexion" class="ecran" hidden>
+      <div class="connexion">
+        <p class="logo"><img src="/images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
+        <h1 class="titre-connexion">Ne perdez plus un seul contact de salon<span class="point">.</span></h1>
+        <p class="texte-doux">Photographiez la carte, dictez une note, enregistrez. Après le salon, l'appli vous dit qui relancer, avec le message prêt.</p>
+        <button id="bouton-connexion" class="bouton bouton-principal" type="button">Se connecter avec Google</button>
+        <p id="connexion-etat" class="sur-titre" hidden>Préparation de votre espace dans votre Drive</p>
+        <p class="texte-doux petit">L'appli ne voit que les fichiers qu'elle crée dans votre Google Drive : un tableau et un dossier de photos.</p>
+      </div>
+    </section>
+
+    <!-- Accueil -->
+    <section id="ecran-accueil" class="ecran" hidden>
+      <header class="entete">
+        <p class="logo"><img src="/images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
+        <button id="bouton-reglages" class="bouton-lien" type="button">Réglages</button>
+      </header>
+
+      <div class="carte-sombre">
+        <div><span id="chiffre-jour" class="chiffre">0</span><span class="sur-titre">contacts aujourd'hui</span></div>
+        <div><span id="chiffre-total" class="chiffre">0</span><span class="sur-titre">au total</span></div>
+      </div>
+
+      <div class="pastilles">
+        <p id="pastille-attente" class="pastille" hidden><span></span></p>
+        <p id="pastille-envoi" class="pastille" hidden><span></span></p>
+        <p id="pastille-horsligne" class="pastille pastille-alerte" hidden><span></span></p>
+        <button id="pastille-reconnexion" class="pastille pastille-alerte pastille-bouton" type="button" hidden><span></span></button>
+      </div>
+
+      <ul id="liste-erreurs" class="liste" hidden></ul>
+
+      <label for="entree-photo" class="bouton bouton-principal bouton-photo">Photographier une carte</label>
+      <input id="entree-photo" type="file" accept="image/*" capture="environment" hidden>
+      <button id="bouton-sans-carte" class="bouton bouton-secondaire" type="button">Saisir sans carte</button>
+
+      <nav class="acces">
+        <button id="bouton-a-relancer" class="bouton bouton-secondaire" type="button">À relancer</button>
+        <button id="bouton-a-verifier" class="bouton bouton-secondaire" type="button">À vérifier <span id="compte-a-verifier" class="compteur"></span></button>
+      </nav>
+
+      <h2 class="sur-titre">Derniers contacts</h2>
+      <ul id="liste-derniers" class="liste"></ul>
+      <p id="aucun-contact" class="texte-doux">Aucun contact pour l'instant. Photographiez votre première carte.</p>
+    </section>
+
+    <!-- Nouveau contact -->
+    <section id="ecran-nouveau" class="ecran" hidden>
+      <header class="entete">
+        <button id="bouton-annuler" class="bouton-lien" type="button">Annuler</button>
+        <h1 class="titre-ecran">Nouveau contact</h1>
+      </header>
+      <p id="bandeau-horsligne-nouveau" class="pastille pastille-alerte" hidden><span>Hors connexion : la carte sera lue au retour du réseau</span></p>
+      <div id="apercu" class="apercu" hidden>
+        <img id="apercu-image" alt="Photo de la carte">
+        <p id="indicateur-lecture" class="indicateur" aria-live="polite"></p>
+      </div>
+      <form id="formulaire-contact" class="formulaire" novalidate autocomplete="off">
+        <label class="champ">Note<textarea id="champ-note" rows="3" autocapitalize="sentences" placeholder="Dictez ce qui compte : intérêt, suite à donner"></textarea></label>
+        <label class="champ">Nom<input id="champ-nom" type="text" autocapitalize="words"></label>
+        <label class="champ">Entreprise<input id="champ-entreprise" type="text"></label>
+        <label class="champ">E-mail<input id="champ-email" type="email" inputmode="email" autocapitalize="off" spellcheck="false"></label>
+        <label class="champ">Téléphone<input id="champ-tel" type="tel" inputmode="tel"></label>
+        <label class="champ">Site<input id="champ-site" type="text" inputmode="url" autocapitalize="off" spellcheck="false"></label>
+        <button class="bouton bouton-corail" type="submit">Enregistrer</button>
+      </form>
+    </section>
+
+    <!-- À vérifier -->
+    <section id="ecran-verifier" class="ecran" hidden>
+      <header class="entete">
+        <button class="bouton-lien" type="button" data-retour>Accueil</button>
+        <h1 class="titre-ecran">À vérifier</h1>
+      </header>
+      <div id="liste-verifier-bloc">
+        <p class="texte-doux">Contacts enregistrés avant la lecture de leur carte. Relisez-les et validez.</p>
+        <ul id="liste-verifier" class="liste"></ul>
+        <p id="aucun-a-verifier" class="texte-doux">Rien à vérifier.</p>
+      </div>
+      <div id="fiche-verifier" hidden>
+        <form id="formulaire-verifier" class="formulaire" novalidate autocomplete="off">
+          <label class="champ">Nom<input id="verif-nom" type="text"></label>
+          <label class="champ">Entreprise<input id="verif-entreprise" type="text"></label>
+          <label class="champ">E-mail<input id="verif-email" type="email" inputmode="email" autocapitalize="off" spellcheck="false"></label>
+          <label class="champ">Téléphone<input id="verif-tel" type="tel" inputmode="tel"></label>
+          <label class="champ">Site<input id="verif-site" type="text" inputmode="url" autocapitalize="off" spellcheck="false"></label>
+          <label class="champ">Note<textarea id="verif-note" rows="3"></textarea></label>
+          <p class="sur-titre">Texte lu sur la carte</p>
+          <pre id="verif-texte" class="texte-lu"></pre>
+          <a id="verif-photo" class="bouton-lien" href="#" target="_blank" rel="noopener">Voir la photo de la carte</a>
+          <button class="bouton bouton-principal" type="submit">Valider</button>
+          <button id="bouton-retour-liste" class="bouton bouton-secondaire" type="button">Retour à la liste</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- À relancer (étape 6) -->
+    <section id="ecran-relancer" class="ecran" hidden>
+      <header class="entete">
+        <button class="bouton-lien" type="button" data-retour>Accueil</button>
+        <h1 class="titre-ecran">À relancer</h1>
+      </header>
+      <p class="texte-doux">Les relances J+2 et J+7 arrivent dans la prochaine version de l'appli.</p>
+    </section>
+
+    <!-- Réglages -->
+    <section id="ecran-reglages" class="ecran" hidden>
+      <header class="entete">
+        <button class="bouton-lien" type="button" data-retour>Accueil</button>
+        <h1 class="titre-ecran">Réglages</h1>
+      </header>
+      <p id="reg-bienvenue" class="pastille" hidden><span>Bienvenue. Complétez vos réglages pour commencer.</span></p>
+      <form id="formulaire-reglages" class="formulaire" novalidate autocomplete="off">
+        <label class="champ">Votre entreprise<input id="reg-entreprise" type="text"></label>
+        <label class="champ">Nom du salon<input id="reg-salon" type="text" placeholder="MIF Expo"></label>
+        <label class="champ">Votre nom<span class="aide-champ">inscrit dans la colonne « Pris par »</span><input id="reg-nom" type="text" autocapitalize="words"></label>
+        <label class="champ">Votre signature<textarea id="reg-signature" rows="3"></textarea></label>
+        <div class="deux-colonnes">
+          <label class="champ">Délai J+2 (jours)<input id="reg-delai2" type="number" inputmode="numeric" min="0"></label>
+          <label class="champ">Délai J+7 (jours)<input id="reg-delai7" type="number" inputmode="numeric" min="0"></label>
+        </div>
+        <h2 class="sur-titre">Première relance</h2>
+        <label class="champ">Objet<input id="reg-objet2" type="text"></label>
+        <label class="champ">Message<textarea id="reg-message2" rows="8"></textarea></label>
+        <h2 class="sur-titre">Seconde relance</h2>
+        <label class="champ">Objet<input id="reg-objet7" type="text"></label>
+        <label class="champ">Message<textarea id="reg-message7" rows="8"></textarea></label>
+        <p class="texte-doux petit">Variables : {prenom}, {entreprise}, {note}, {salon}, {exposant}, {signature}</p>
+        <button class="bouton bouton-principal" type="submit">Enregistrer les réglages</button>
+      </form>
+      <dl class="infos">
+        <dt class="sur-titre">Compte Google connecté</dt><dd id="reg-compte"></dd>
+        <dt class="sur-titre">Code d'activation</dt><dd id="reg-code"></dd>
+      </dl>
+      <a id="reg-lien-tableau" class="bouton bouton-secondaire" href="#" target="_blank" rel="noopener">Ouvrir mon tableau</a>
+      <button id="bouton-synchroniser" class="bouton bouton-secondaire" type="button">Synchroniser maintenant</button>
+      <button id="bouton-aide" class="bouton bouton-secondaire" type="button">Installer l'appli sur le téléphone</button>
+      <button id="bouton-deconnexion" class="bouton bouton-discret" type="button">Se déconnecter</button>
+    </section>
+
+    <!-- Aide à l'installation (étape 5) -->
+    <section id="ecran-aide" class="ecran" hidden>
+      <header class="entete">
+        <h1 class="titre-ecran">Installer l'appli</h1>
+      </header>
+      <p id="aide-installee" class="pastille" hidden><span>L'appli est déjà installée sur ce téléphone.</span></p>
+      <p class="texte-doux">Une icône sur l'écran d'accueil, et l'appli s'ouvre comme les autres, même sans réseau.</p>
+      <div id="aide-iphone" class="aide-bloc">
+        <h2 class="sur-titre">iPhone</h2>
+        <ol>
+          <li>Ouvrez <strong>app.optimisons.ai</strong> dans Safari (ou Chrome).</li>
+          <li>Touchez le bouton <strong>Partager</strong> (carré avec une flèche vers le haut). Dans Chrome, il est dans la barre d'adresse.</li>
+          <li>Choisissez <strong>Sur l'écran d'accueil</strong>, puis <strong>Ajouter</strong>.</li>
+          <li>Ouvrez ensuite l'appli depuis sa nouvelle icône « Carnet ».</li>
+        </ol>
+      </div>
+      <div id="aide-android" class="aide-bloc">
+        <h2 class="sur-titre">Android</h2>
+        <button id="bouton-installer" class="bouton bouton-principal" type="button" hidden>Installer l'application</button>
+        <ol>
+          <li>Ouvrez <strong>app.optimisons.ai</strong> dans Chrome.</li>
+          <li>Touchez le menu <strong>⋮</strong> en haut à droite.</li>
+          <li>Choisissez <strong>Installer l'application</strong> (ou <strong>Ajouter à l'écran d'accueil</strong>), puis <strong>Installer</strong>.</li>
+          <li>Ouvrez ensuite l'appli depuis sa nouvelle icône « Carnet ».</li>
+        </ol>
+      </div>
+      <button id="bouton-aide-continuer" class="bouton bouton-secondaire" type="button">Continuer</button>
+    </section>
+  </main>
+
+  <footer class="pied">
+    <p>Carnet de salon par Optimisons.ai · L'IA, simplement.</p>
+    <p>Tout reste dans votre compte Google, sans IA générative.</p>
+  </footer>
+
+  <div id="message" class="message" role="status" aria-live="polite"></div>
+
+  <script type="module" src="/js/app.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async onload="window.carnetGisCharge && window.carnetGisCharge()"></script>
 </body>
 </html>

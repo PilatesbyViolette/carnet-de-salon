@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carnet de salon · Tests du tri</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    td, th { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: top; }
+    .vert { color: #0a7a2f; font-weight: bold; }
+    .rouge { color: #b00020; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <!-- Tests unitaires du tri (js/tri.js). À ouvrir par un serveur : https://app.optimisons.ai/tests/tri.test.html -->
+  <h1 id="bilan">Tests du tri : en cours</h1>
+  <table>
+    <thead><tr><th>Cas</th><th>Champ</th><th>Attendu</th><th>Obtenu</th><th>Résultat</th></tr></thead>
+    <tbody id="resultats"></tbody>
+  </table>
+
+  <script type="module">
+    import { extraireChamps, nettoyer } from '../js/tri.js';
+
+    // Les six cas du cahier des charges (§ 7), résultats identiques au prototype Apps Script.
+    const CAS = [
+      { nom: 'Carte classique',
+        carte: 'ATELIERS DUPONT SAS\nMarie Dupont\nDirectrice commerciale\n12 rue des Lilas 69003 Lyon\nTél. 04 72 12 34 56\nmarie.dupont@ateliers-dupont.fr\nwww.ateliers-dupont.fr', note: '',
+        attendu: { nom: 'Marie Dupont', entreprise: 'ATELIERS DUPONT SAS', email: 'marie.dupont@ateliers-dupont.fr', tel: '04 72 12 34 56', site: 'www.ateliers-dupont.fr' } },
+      { nom: 'Nom en capitales',
+        carte: 'JEAN MARTIN\nResponsable achats\nBOIS & CO\njean.martin@boisco.fr\n06 12 34 56 78', note: '',
+        attendu: { nom: 'Jean Martin', entreprise: 'BOIS & CO', email: 'jean.martin@boisco.fr', tel: '06 12 34 56 78', site: 'www.boisco.fr' } },
+      { nom: 'E-mail avec espaces',
+        carte: 'Sophie Bernard\nChargée de clientèle\nsophie.bernard @ textiles-lyon . fr\n+33 6 98 76 54 32', note: '',
+        attendu: { nom: 'Sophie Bernard', entreprise: 'Textiles Lyon', email: 'sophie.bernard@textiles-lyon.fr', tel: '06 98 76 54 32', site: 'www.textiles-lyon.fr' } },
+      { nom: 'Signature de mail sur une ligne',
+        carte: 'Paul Durand | Chef de projet | Maison Durand | paul.durand@maison-durand.com | 01 45 67 89 10', note: '',
+        attendu: { nom: 'Paul Durand', entreprise: 'Maison Durand', email: 'paul.durand@maison-durand.com', tel: '01 45 67 89 10', site: 'www.maison-durand.com' } },
+      { nom: 'Adresse générique',
+        carte: 'Fromagerie Lefort\ncontact@fromagerie-lefort.fr\n03 20 11 22 33\nwww.fromagerie-lefort.fr', note: '',
+        attendu: { nom: '', entreprise: 'Fromagerie Lefort', email: 'contact@fromagerie-lefort.fr', tel: '03 20 11 22 33', site: 'www.fromagerie-lefort.fr' } },
+      { nom: 'Dictée seule',
+        carte: '', note: 'Rappeler mardi, claire.petit arobase gmail point com, 06 11 22 33 44, intéressée par la gamme pro',
+        attendu: { nom: 'Claire Petit', entreprise: '', email: 'claire.petit@gmail.com', tel: '06 11 22 33 44', site: '' } }
+    ];
+
+    // Ajoute une ligne au tableau des résultats.
+    function ligne(cas, champ, attendu, obtenu) {
+      const ok = attendu === obtenu;
+      const tr = document.createElement('tr');
+      [cas, champ, attendu, obtenu, ok ? 'vert' : 'ROUGE'].forEach((texte, i) => {
+        const td = document.createElement('td');
+        td.textContent = texte;
+        if (i === 4) td.className = ok ? 'vert' : 'rouge';
+        tr.appendChild(td);
+      });
+      document.getElementById('resultats').appendChild(tr);
+      return ok;
+    }
+
+    let total = 0, verts = 0;
+    for (const cas of CAS) {
+      const obtenu = extraireChamps(cas.carte, cas.note);
+      for (const champ of Object.keys(cas.attendu)) {
+        total++;
+        if (ligne(cas.nom, champ, cas.attendu[champ], obtenu[champ])) verts++;
+      }
+    }
+    total++;
+    if (ligne('Nettoyage', 'arobase et point', 'a.b@c.fr', nettoyer('a.b arobase c point fr'))) verts++;
+
+    const bilan = document.getElementById('bilan');
+    bilan.textContent = 'Tests du tri : ' + verts + ' / ' + total + (verts === total ? ' verts' : ' (ÉCHEC)');
+    bilan.className = verts === total ? 'vert' : 'rouge';
+  </script>
+</body>
+</html>
