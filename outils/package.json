@@ -1,0 +1,17 @@
+{
+  "name": "carnet-de-salon-outils",
+  "version": "1.0.0",
+  "description": "Outils hors site de Carnet de salon (non servis par l'appli)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "private": "true",
+  "devDependencies": {
+    "qrcode": "^1.5.4"
+  }
+}
