@@ -12,4 +12,9 @@ Appli mobile installable (PWA) pour les exposants de salons : photo de la carte 
 
 ## Variante de connexion retenue
 
-À compléter après l'étape 2 (test sur iPhone et Android).
+Test de l'étape 2, selon la règle de décision du document de test de connexion (§ 5).
+
+| Plateforme | Résultat | Décision |
+|---|---|---|
+| Android, appli installée | A OK (reconnexion en 4 s après fermeture complète, chaîne Drive en 11,7 s), B OK | **A** (fenêtre Google Identity Services) |
+| iPhone | Test prévu le 7 novembre au soir | À compléter |
