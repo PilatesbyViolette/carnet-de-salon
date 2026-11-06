@@ -1,0 +1,23 @@
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Éditeurs
+.vscode/
+.idea/
+
+# Node (outils hors site uniquement)
+node_modules/
+
+# Secrets : ne jamais publier
+.env
+*.secret
+secrets/
+
+# Sorties locales du générateur de codes (codes en clair)
+outils/sortie/
+
+# Documents de conception : gardés en local, jamais publiés
+docs/
+CONSIGNES.md
