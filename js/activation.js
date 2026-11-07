@@ -1,16 +1,19 @@
-// Activation par code : empreinte SHA-256 du code saisi comparée à js/codes.js, écrans « Activation » et « Essai terminé ».
-// Code gardé dans localStorage et dans la clé Réglages « Code d'activation ». Essai : début gardé dans localStorage
-// et dans la clé Réglages « Essai commencé le » ; la plus ancienne des deux dates fait foi (pas de remise à zéro).
+// Activation : essai gratuit de 24 h sans code (une seule fois par compte Google), ou code d'achat ou de démonstration.
+// Essai gratuit : la clé Réglages « Essai commencé le » fait foi ; celle du tableau l'emporte à la synchronisation,
+// donc une réinstallation ne relance pas l'essai. Code : empreinte SHA-256 comparée à js/codes.js, gardé dans
+// localStorage et dans la clé Réglages « Code d'activation ». Écrans « Activation » et « Votre essai est terminé ».
 
 import { CODES } from './codes.js';
 import * as base from './base.js';
 import { enregistrerEcran, montrerErreur } from './interface.js';
-import { dateIso, dateCourte, plusAncienne } from './dates.js';
+import { dateIso, dateCourte } from './dates.js';
 
 export const CLE_CODE = 'Code d\'activation';
 export const CLE_ESSAI = 'Essai commencé le';
-const LOCAL_CODE = 'activation';
-const LOCAL_ESSAI = 'essaiCommenceLe';
+export const DUREE_ESSAI_HEURES = 24;
+const CODE_PROMO = 'MIF2026';          // code promo Stripe du prix salon : saisi dans l'appli, il démarre l'essai gratuit
+const LOCAL_ACTIVATION = 'activation'; // { essai: true } ou { code, empreinte }
+const LOCAL_DEBUT_TEST = 'debutCodeTest';
 const HEURE_MS = 60 * 60 * 1000;
 
 let etat = null;       // { code, type, libelle, fin (ms ou null) }
@@ -32,6 +35,11 @@ export function normaliserCode(saisie) {
   return String(saisie || '').toUpperCase().replace(/[\s-]+/g, '');
 }
 
+// Forme affichée d'un code : CDS-XXXX-XXXX quelle que soit la saisie.
+function codeAffiche(normal) {
+  return /^CDS[A-Z0-9]{8}$/.test(normal) ? normal.replace(/^CDS(.{4})(.{4})$/, 'CDS-$1-$2') : normal;
+}
+
 // Empreinte SHA-256 hexadécimale d'un texte.
 export async function empreinte(texte) {
   const octets = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texte));
@@ -48,15 +56,28 @@ function signaler() {
   window.dispatchEvent(new CustomEvent('carnet:activation'));
 }
 
-// Début de l'essai : le plus ancien entre localStorage et Réglages (maintenant s'il n'y en a pas), recopié des deux côtés.
-async function debutEssai() {
-  const enBase = await base.lireReglage(CLE_ESSAI, '');
-  const debut = plusAncienne(lireLocal(LOCAL_ESSAI), enBase) || dateIso(new Date());
-  ecrireLocal(LOCAL_ESSAI, debut);
-  if (debut !== enBase) {
-    await base.ecrireReglage(CLE_ESSAI, debut);
-    await base.ecrireReglage('_activationAEnvoyer', true);
-  }
+// Activation gardée sur le téléphone ; un ancien MIF2026 gardé comme code devient l'essai gratuit.
+function lireActivation() {
+  let memo = null;
+  try { memo = JSON.parse(lireLocal(LOCAL_ACTIVATION)); } catch (e) { memo = null; }
+  if (memo && memo.code && normaliserCode(memo.code) === CODE_PROMO) return { essai: true };
+  return memo;
+}
+
+// Début de l'essai gratuit : clé Réglages « Essai commencé le », créée maintenant si absente puis envoyée au tableau.
+async function debutEssaiGratuit() {
+  const debut = await base.lireReglage(CLE_ESSAI, '');
+  if (debut) return debut;
+  const maintenant = dateIso(new Date());
+  await base.ecrireReglage(CLE_ESSAI, maintenant);
+  await base.ecrireReglage('_activationAEnvoyer', true);
+  return maintenant;
+}
+
+// Début du code de test : gardé sur le téléphone seulement, il ne touche pas à l'essai gratuit du compte.
+function debutCodeTest() {
+  const debut = lireLocal(LOCAL_DEBUT_TEST) || dateIso(new Date());
+  ecrireLocal(LOCAL_DEBUT_TEST, debut);
   return debut;
 }
 
@@ -67,26 +88,35 @@ async function recopierCode(code) {
   await base.ecrireReglage('_activationAEnvoyer', true);
 }
 
+// État d'un code gardé (un code retiré de js/codes.js n'est plus valable) ; null sinon.
+async function etatCode(memo) {
+  const code = memo && trouverCode(memo.empreinte);
+  if (!code) return null;
+  await recopierCode(memo.code);
+  const fin = code.type === 'essai' ? Date.parse(debutCodeTest()) + code.dureeHeures * HEURE_MS : null;
+  return { code: memo.code, type: code.type, libelle: code.libelle, fin };
+}
+
 // Prévient l'interface à la fin de l'essai (pastille de l'accueil, capture bloquée).
 function programmerFin() {
   clearTimeout(minuterie);
   if (etat && etat.fin && etat.fin > Date.now()) minuterie = setTimeout(signaler, etat.fin - Date.now() + 500);
 }
 
-// Charge l'activation gardée (un code retiré de js/codes.js n'est plus valable) et la recopie dans les Réglages.
+// Charge l'activation gardée : essai gratuit, code, ou rien.
 export async function chargerActivation() {
-  let memo = null;
-  try { memo = JSON.parse(lireLocal(LOCAL_CODE)); } catch (e) { memo = null; }
-  const code = memo && trouverCode(memo.empreinte);
-  etat = code ? { code: memo.code, type: code.type, libelle: code.libelle, fin: null } : null;
-  if (!etat) return null;
-  await recopierCode(etat.code);
-  if (code.type === 'essai') etat.fin = Date.parse(await debutEssai()) + code.dureeHeures * HEURE_MS;
+  const memo = lireActivation();
+  if (memo && memo.essai) {
+    const fin = Date.parse(await debutEssaiGratuit()) + DUREE_ESSAI_HEURES * HEURE_MS;
+    etat = { code: '', type: 'essai', libelle: 'essai gratuit', fin };
+  } else {
+    etat = await etatCode(memo);
+  }
   programmerFin();
   return etat;
 }
 
-// Vrai si un code valable a été saisi.
+// Vrai si l'essai a commencé ou si un code valable a été saisi.
 export function estActive() {
   return !!etat;
 }
@@ -106,25 +136,37 @@ export function finEssai() {
   return etat ? etat.fin : null;
 }
 
-// Description pour l'écran Réglages : code, type et fin de l'essai.
+// Description pour l'écran Réglages : essai gratuit et sa fin, ou code et son type.
 export function descriptionActivation() {
   if (!etat) return 'aucun';
   if (etat.type === 'achat') return etat.code + ' · acheté';
   if (etat.type === 'demo') return etat.code + ' · démonstration';
-  return etat.code + (essaiTermine() ? ' · essai terminé' : ' · essai jusqu\'au ' + dateCourte(etat.fin));
+  const nom = etat.code ? etat.code + ' · essai' : 'Essai gratuit';
+  return nom + (essaiTermine() ? ' terminé' : ' jusqu\'au ' + dateCourte(etat.fin));
 }
 
-// Active un code saisi : empreinte, comparaison, mémorisation ; lève une erreur lisible sinon.
+// « Commencer mon essai gratuit de 24 h » : l'essai démarre maintenant, sauf s'il a déjà commencé pour ce compte.
+export async function commencerEssai() {
+  ecrireLocal(LOCAL_ACTIVATION, JSON.stringify({ essai: true }));
+  await chargerActivation();
+  signaler();
+}
+
+// Active un code saisi (MIF2026 démarre l'essai gratuit) ; lève une erreur lisible sinon.
 export async function activer(saisie) {
   const normal = normaliserCode(saisie);
   if (!normal) throw new Error('Saisissez votre code d\'activation.');
+  if (normal === CODE_PROMO) {
+    await commencerEssai();
+    if (essaiTermine()) throw new Error('Votre essai gratuit est déjà terminé. Achetez un code pour continuer à capturer.');
+    return;
+  }
   const valeur = await empreinte(normal);
-  const code = trouverCode(valeur);
-  if (!code) throw new Error('Code inconnu. Vérifiez chaque caractère (les codes CDS ne contiennent ni O, ni 0, ni I, ni 1).');
-  ecrireLocal(LOCAL_CODE, JSON.stringify({ code: String(saisie).trim().toUpperCase().replace(/\s+/g, ''), empreinte: valeur }));
+  if (!trouverCode(valeur)) throw new Error('Code inconnu. Vérifiez chaque caractère (les codes CDS ne contiennent ni O, ni 0, ni I, ni 1).');
+  ecrireLocal(LOCAL_ACTIVATION, JSON.stringify({ code: codeAffiche(normal), empreinte: valeur }));
   await chargerActivation();
   signaler();
-  if (essaiTermine()) throw new Error('Cet essai est déjà terminé. Achetez un code pour continuer à capturer.');
+  if (essaiTermine()) throw new Error('Ce code d\'essai est déjà terminé. Achetez un code pour continuer à capturer.');
 }
 
 // Formulaire de code (écran Activation ou Essai terminé) : erreur sous le champ, sinon écran suivant.
@@ -147,6 +189,9 @@ export function initActivation(apresActivation) {
   enregistrerEcran('essai', { afficher: vider('essai-erreur') });
   brancherFormulaire('formulaire-activation', 'champ-code', 'activation-erreur');
   brancherFormulaire('formulaire-code-essai', 'champ-code-essai', 'essai-erreur');
+  document.getElementById('bouton-essai-gratuit').addEventListener('click', () => {
+    commencerEssai().then(suite).catch((e) => montrerErreur('Essai : ' + e.message));
+  });
   window.addEventListener('carnet:sync', (e) => {
     if (e.detail.fini) chargerActivation().then(signaler).catch((err) => montrerErreur('Activation : ' + err.message));
   });

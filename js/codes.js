@@ -1,11 +1,10 @@
 // Codes d'activation : empreintes SHA-256 seulement, jamais de code en clair (le dépôt est public).
 // Lignes produites par node outils/codes.js ; le code est mis en majuscules, sans espaces ni tirets, avant le calcul.
-// type : essai (fin après dureeHeures), achat ou demo (dureeHeures null : sans fin).
+// type : achat ou demo (dureeHeures null : sans fin), essai (fin après dureeHeures, réservé au code de test).
+// L'essai gratuit de 24 h ne demande pas de code ; MIF2026 est le code promo Stripe, pas un code d'activation.
 // Retirer une ligne révoque le code ; changer alors VERSION dans sw.js.
 
 export const CODES = [
-  // Salon MIF 2026 : code public MIF2026, essai de 24 heures
-  { empreinte: 'd88483da1aa45159bbd7544170294b5d84b44571c6027358c8dfe51e730a8cbc', type: 'essai', dureeHeures: 24, libelle: 'MIF 2026, essai 24 h' },
   // Code de test d'une minute : À RETIRER AVANT LA RECETTE
   { empreinte: '57f6234528fe6aef0a23047229ea3de7216dde0bb6b8493e7ab7dc6a830c2fad', type: 'essai', dureeHeures: 0.016666666666666666, libelle: 'test, à retirer avant la recette' },
   // Démonstration, sans fin

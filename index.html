@@ -22,16 +22,17 @@
   <div id="bandeau-erreur" class="bandeau bandeau-erreur" role="alert" hidden><span></span><small>Toucher pour fermer</small></div>
 
   <main>
-    <!-- Activation (avant tout accès, étape 6) -->
+    <!-- Activation (avant tout accès, étape 6) : essai gratuit sans code, ou code d'achat ou de démonstration -->
     <section id="ecran-activation" class="ecran" hidden>
       <div class="connexion">
         <p class="logo"><img src="/images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
-        <h1 class="titre-connexion">Activez votre carnet<span class="point">.</span></h1>
-        <p class="texte-doux">Saisissez le code reçu après votre achat, ou le code d'essai donné sur le salon.</p>
-        <form id="formulaire-activation" class="formulaire" novalidate autocomplete="off">
-          <label class="champ">Code d'activation<input id="champ-code" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX"></label>
+        <h1 class="titre-connexion">Essayez-le gratuitement pendant 24 heures<span class="point">.</span></h1>
+        <p class="texte-doux">Sans code et sans carte bancaire. Un seul essai par compte Google.</p>
+        <button id="bouton-essai-gratuit" class="bouton bouton-principal" type="button">Commencer mon essai gratuit de 24 h</button>
+        <form id="formulaire-activation" class="formulaire separe" novalidate autocomplete="off">
+          <label class="champ">J'ai un code<span class="aide-champ">achat ou démonstration</span><input id="champ-code" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX"></label>
           <p id="activation-erreur" class="erreur-champ" role="alert" hidden></p>
-          <button class="bouton bouton-principal" type="submit">Activer</button>
+          <button class="bouton bouton-secondaire" type="submit">Activer mon code</button>
         </form>
         <a class="bouton-lien" data-lien-achat href="#" target="_blank" rel="noopener">Pas encore de code ? Acheter</a>
       </div>

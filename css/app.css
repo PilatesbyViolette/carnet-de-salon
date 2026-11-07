@@ -180,6 +180,7 @@ a.bouton-lien { display: inline-block; }
 
 /* ---------- Activation et relances (étape 6) ---------- */
 
+.separe { margin-top: 28px; padding-top: 8px; border-top: 1px solid var(--bordure); }
 .erreur-champ { margin: 4px 0 8px; padding: 10px 12px; border-radius: 10px; background: var(--corail-pale); color: var(--alerte); font: 500 14px/1.35 var(--f-texte); }
 .relance { margin: 10px 0; padding: 12px 14px; background: var(--blanc); border: 1px solid var(--bordure); border-radius: var(--rayon); }
 .relance__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

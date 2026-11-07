@@ -34,16 +34,17 @@ function surConnexion() {
   demanderJeton(true).then(apresConnexion).catch((e) => montrerErreur(e.message));
 }
 
-// Après la première connexion : compte, tableau et dossier retrouvés ou créés, réglages, aide à l'installation.
+// Après la première connexion : compte, tableau et dossier retrouvés ou créés, réglages, essai, aide à l'installation.
 async function apresConnexion() {
   const etat = document.getElementById('connexion-etat');
   etat.hidden = false;
   try {
     localStorage.setItem('compte', await drive.lireEmailCompte());
-    await chargerActivation(); // recopie le code et l'essai dans les Réglages (vidés à la déconnexion)
     await espace.preparerEspace();
-    await espace.rafraichirDepuisTableau();
-    if (!(await espace.reglage('Votre nom'))) ouvrirReglagesPremiereFois();
+    await espace.rafraichirDepuisTableau(); // « Essai commencé le » du tableau fait foi (essai déjà consommé ?)
+    await chargerActivation(); // recopie aussi le code et l'essai dans les Réglages (vidés à la déconnexion)
+    if (essaiTermine()) afficher('essai');
+    else if (!(await espace.reglage('Votre nom'))) ouvrirReglagesPremiereFois();
     else afficher(doitMontrerAide() ? 'aide' : 'accueil');
     synchroniser();
   } catch (e) {

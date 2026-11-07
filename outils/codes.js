@@ -1,8 +1,8 @@
 // Générateur de codes d'activation (hors site, jamais servi par l'appli).
-//   node outils/codes.js essai MIF2026 24 ["libellé"]   ligne à coller dans js/codes.js
-//   node outils/codes.js achat 20                       20 codes CDS-XXXX-XXXX : lignes d'empreintes et CSV
-//   node outils/codes.js demo 1                         code(s) de démonstration, sans fin
-//   node outils/codes.js test                           code d'essai d'une minute (à retirer avant la recette)
+//   node outils/codes.js achat 20   20 codes CDS-XXXX-XXXX : lignes d'empreintes et CSV
+//   node outils/codes.js demo 1     code(s) de démonstration, sans fin
+//   node outils/codes.js test       code d'essai d'une minute (à retirer avant la recette)
+// L'essai gratuit de 24 h ne demande pas de code ; MIF2026 est le code promo Stripe, pas un code d'activation.
 // Les codes en clair ne sortent qu'à l'écran et dans outils/sortie/ (ignoré par Git) : ne jamais les committer.
 // Seules les empreintes SHA-256 vont dans js/codes.js (le dépôt est public).
 
@@ -39,14 +39,6 @@ function codesUniques(n) {
   return [...codes];
 }
 
-// Lit une durée en heures : « 24 », « 0.5 » ou « 1/60 ».
-function lireDuree(texte) {
-  const [a, b] = String(texte).split('/').map(Number);
-  const heures = b ? a / b : a;
-  if (!(heures > 0)) throw new Error('Durée en heures invalide : ' + texte);
-  return heures;
-}
-
 // Ligne de js/codes.js pour un code.
 function ligneCodes(code, type, dureeHeures, libelle) {
   return '  { empreinte: \'' + empreinte(code) + '\', type: \'' + type + '\', dureeHeures: ' +
@@ -78,20 +70,12 @@ function lot(type, n, dureeHeures, libelle) {
   console.log(csv(codes, type));
 }
 
-// Code fixe (par exemple MIF2026) : une seule ligne d'empreinte.
-function codeFixe(code, duree, libelle) {
-  const heures = lireDuree(duree);
-  console.log(ligneCodes(code, 'essai', heures, libelle || 'essai ' + duree + ' h'));
-}
-
 // Point d'entrée : lit la commande et ses arguments.
 function principal(args) {
-  const [commande, a, b, c] = args;
-  if (commande === 'essai' && a && b) return codeFixe(a, b, c);
-  if (commande === 'achat' || commande === 'demo') return lot(commande, Number(a) || 1, null, LIBELLES[commande]);
-  if (commande === 'test') return lot('essai', 1, lireDuree('1/60'), 'test, à retirer avant la recette');
-  console.log('Usage :\n  node outils/codes.js essai MIF2026 24 ["libellé"]\n  node outils/codes.js achat 20\n' +
-    '  node outils/codes.js demo 1\n  node outils/codes.js test');
+  const [commande, nombre] = args;
+  if (commande === 'achat' || commande === 'demo') return lot(commande, Number(nombre) || 1, null, LIBELLES[commande]);
+  if (commande === 'test') return lot('essai', 1, 1 / 60, 'test, à retirer avant la recette');
+  console.log('Usage :\n  node outils/codes.js achat 20\n  node outils/codes.js demo 1\n  node outils/codes.js test');
   process.exitCode = 1;
 }
 

@@ -5,7 +5,6 @@ import * as base from './base.js';
 import * as drive from './drive.js';
 import { compteConnu } from './connexion.js';
 import { CLE_CODE, CLE_ESSAI } from './activation.js';
-import { plusAncienne } from './dates.js';
 
 // Réglages par défaut, repris du prototype (REGLAGES_DEFAUT) avec Votre nom, les délais et le code d'activation.
 export const REGLAGES_DEFAUT = [
@@ -91,8 +90,8 @@ export async function enregistrerReglages(valeurs) {
   await base.ecrireReglage('_reglagesAEnvoyer', true);
 }
 
-// Envoie les réglages locaux (tous, ou seulement ceux de l'activation) vers l'onglet Réglages,
-// en gardant les clés du tableau que l'appli ne connaît pas et la date d'essai la plus ancienne.
+// Envoie les réglages locaux (tous, ou seulement ceux de l'activation) vers l'onglet Réglages, en gardant
+// les clés du tableau que l'appli ne connaît pas ; une date « Essai commencé le » déjà dans le tableau fait foi.
 export async function envoyerReglagesSiBesoin() {
   const tout = await base.lireReglage('_reglagesAEnvoyer', false);
   if (!tout && !(await base.lireReglage('_activationAEnvoyer', false))) return;
@@ -101,15 +100,15 @@ export async function envoyerReglagesSiBesoin() {
   const locaux = await base.tousLesReglages();
   const cles = tout ? Object.keys(locaux).filter((cle) => !estInterne(cle)) : [CLE_CODE, CLE_ESSAI].filter((cle) => locaux[cle]);
   cles.forEach((cle) => fusion.set(cle, String(locaux[cle])));
-  const essai = plusAncienne(locaux[CLE_ESSAI] || '', distants.filter((l) => l[0] === CLE_ESSAI).map((l) => l[1])[0] || '');
-  if (essai) { fusion.set(CLE_ESSAI, essai); await base.ecrireReglage(CLE_ESSAI, essai); }
+  const essaiDistant = distants.filter((l) => l[0] === CLE_ESSAI).map((l) => l[1])[0];
+  if (essaiDistant) { fusion.set(CLE_ESSAI, essaiDistant); await base.ecrireReglage(CLE_ESSAI, essaiDistant); }
   const lignes = [['Réglage', 'Valeur']].concat([...fusion.entries()]);
   await drive.ecrirePlage(ids.tableau, 'Réglages', 'A1:B' + lignes.length, lignes);
   await base.ecrireReglage('_reglagesAEnvoyer', false);
   await base.ecrireReglage('_activationAEnvoyer', false);
 }
 
-// Relit le tableau : copie locale des lignes de contacts et des réglages.
+// Relit le tableau : copie locale des lignes de contacts et des réglages (« Essai commencé le » du tableau fait foi).
 export async function rafraichirDepuisTableau() {
   const lignes = await drive.lireLignes(ids.tableau);
   await base.ecrireReglage('_lignes', lignes.map(ligneVersContact));
@@ -117,7 +116,7 @@ export async function rafraichirDepuisTableau() {
   const activationEnAttente = await base.lireReglage('_activationAEnvoyer', false);
   for (const [cle, valeur] of await drive.lireReglagesTableau(ids.tableau)) {
     if (!cle || estInterne(cle)) continue;
-    if (cle === CLE_ESSAI) await base.ecrireReglage(cle, plusAncienne(await base.lireReglage(cle, ''), valeur || ''));
+    if (cle === CLE_ESSAI) { if (valeur) await base.ecrireReglage(cle, valeur); }
     else if (!enAttente && !(cle === CLE_CODE && activationEnAttente)) await base.ecrireReglage(cle, valeur || '');
   }
 }
