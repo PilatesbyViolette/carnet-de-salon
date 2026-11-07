@@ -1,4 +1,4 @@
-// Démarrage de l'appli : écrans, connexion, file d'attente, service worker et bandeaux.
+// Démarrage de l'appli : activation, écrans, connexion, file d'attente, service worker et bandeaux.
 
 import { afficher, enregistrerEcran, montrerErreur, fermerErreur } from './interface.js';
 import * as base from './base.js';
@@ -11,6 +11,23 @@ import { initNouveau } from './nouveau.js';
 import { initVerifier } from './verifier.js';
 import { initReglages, ouvrirReglagesPremiereFois } from './reglages.js';
 import { initAide, doitMontrerAide } from './aide.js';
+import { initRelances } from './relances.js';
+import { initActivation, chargerActivation, estActive, essaiTermine } from './activation.js';
+
+// LIEN STRIPE À REMPLACER, ajouter ?prefilled_promo_code=MIF2026
+const LIEN_ACHAT = 'https://optimisons.ai/carnet-de-salon';
+
+// Met le lien d'achat sur tous les liens « Acheter ».
+function brancherLiensAchat() {
+  document.querySelectorAll('[data-lien-achat]').forEach((a) => { a.href = LIEN_ACHAT; });
+}
+
+// Écran à ouvrir une fois l'appli activée : connexion Google, essai terminé ou accueil.
+function ouvrirApresActivation() {
+  if (!compteConnu()) { afficher('connexion'); return; }
+  afficher(essaiTermine() ? 'essai' : 'accueil');
+  synchroniser();
+}
 
 // Bouton « Se connecter avec Google » : la fenêtre Google s'ouvre dans le geste.
 function surConnexion() {
@@ -23,6 +40,7 @@ async function apresConnexion() {
   etat.hidden = false;
   try {
     localStorage.setItem('compte', await drive.lireEmailCompte());
+    await chargerActivation(); // recopie le code et l'essai dans les Réglages (vidés à la déconnexion)
     await espace.preparerEspace();
     await espace.rafraichirDepuisTableau();
     if (!(await espace.reglage('Votre nom'))) ouvrirReglagesPremiereFois();
@@ -70,7 +88,9 @@ async function demarrer() {
   brancherBandeaux();
   enregistrerServiceWorker();
   enregistrerEcran('connexion', {});
-  enregistrerEcran('relancer', {});
+  brancherLiensAchat();
+  initActivation(ouvrirApresActivation);
+  initRelances();
   initAccueil();
   initNouveau();
   initVerifier();
@@ -79,10 +99,10 @@ async function demarrer() {
   document.getElementById('bouton-connexion').addEventListener('click', surConnexion);
   document.querySelectorAll('[data-retour]').forEach((b) => b.addEventListener('click', () => afficher('accueil')));
   await reprendreCapturesInterrompues();
+  await chargerActivation();
   demarrerFile();
-  if (!compteConnu()) { afficher('connexion'); return; }
-  afficher('accueil');
-  synchroniser();
+  if (!estActive()) { afficher('activation'); return; }
+  ouvrirApresActivation();
 }
 
 demarrer().catch((e) => montrerErreur('Démarrage : ' + e.message));

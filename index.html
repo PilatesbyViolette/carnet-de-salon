@@ -22,6 +22,36 @@
   <div id="bandeau-erreur" class="bandeau bandeau-erreur" role="alert" hidden><span></span><small>Toucher pour fermer</small></div>
 
   <main>
+    <!-- Activation (avant tout accès, étape 6) -->
+    <section id="ecran-activation" class="ecran" hidden>
+      <div class="connexion">
+        <p class="logo"><img src="/images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
+        <h1 class="titre-connexion">Activez votre carnet<span class="point">.</span></h1>
+        <p class="texte-doux">Saisissez le code reçu après votre achat, ou le code d'essai donné sur le salon.</p>
+        <form id="formulaire-activation" class="formulaire" novalidate autocomplete="off">
+          <label class="champ">Code d'activation<input id="champ-code" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX"></label>
+          <p id="activation-erreur" class="erreur-champ" role="alert" hidden></p>
+          <button class="bouton bouton-principal" type="submit">Activer</button>
+        </form>
+        <a class="bouton-lien" data-lien-achat href="#" target="_blank" rel="noopener">Pas encore de code ? Acheter</a>
+      </div>
+    </section>
+
+    <!-- Essai terminé (étape 6) : capture bloquée, consultation et relances possibles -->
+    <section id="ecran-essai" class="ecran" hidden>
+      <header class="entete">
+        <button class="bouton-lien" type="button" data-retour>Accueil</button>
+      </header>
+      <h1 class="titre-connexion">Votre essai est terminé<span class="point">.</span></h1>
+      <p class="texte-doux">Vos contacts restent consultables et vous pouvez toujours les relancer. Pour capturer de nouveaux contacts, achetez votre code.</p>
+      <a class="bouton bouton-corail" data-lien-achat href="#" target="_blank" rel="noopener">Acheter</a>
+      <form id="formulaire-code-essai" class="formulaire" novalidate autocomplete="off">
+        <label class="champ">J'ai déjà un code<input id="champ-code-essai" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX"></label>
+        <p id="essai-erreur" class="erreur-champ" role="alert" hidden></p>
+        <button class="bouton bouton-secondaire" type="submit">Activer ce code</button>
+      </form>
+    </section>
+
     <!-- Connexion (première ouverture) -->
     <section id="ecran-connexion" class="ecran" hidden>
       <div class="connexion">
@@ -51,6 +81,7 @@
         <p id="pastille-envoi" class="pastille" hidden><span></span></p>
         <p id="pastille-horsligne" class="pastille pastille-alerte" hidden><span></span></p>
         <button id="pastille-reconnexion" class="pastille pastille-alerte pastille-bouton" type="button" hidden><span></span></button>
+        <button id="pastille-essai" class="pastille" type="button" hidden><span></span></button>
       </div>
 
       <ul id="liste-erreurs" class="liste" hidden></ul>
@@ -60,7 +91,7 @@
       <button id="bouton-sans-carte" class="bouton bouton-secondaire" type="button">Saisir sans carte</button>
 
       <nav class="acces">
-        <button id="bouton-a-relancer" class="bouton bouton-secondaire" type="button">À relancer</button>
+        <button id="bouton-a-relancer" class="bouton bouton-secondaire" type="button">À relancer <span id="compte-a-relancer" class="compteur"></span></button>
         <button id="bouton-a-verifier" class="bouton bouton-secondaire" type="button">À vérifier <span id="compte-a-verifier" class="compteur"></span></button>
       </nav>
 
@@ -125,7 +156,9 @@
         <button class="bouton-lien" type="button" data-retour>Accueil</button>
         <h1 class="titre-ecran">À relancer</h1>
       </header>
-      <p class="texte-doux">Les relances J+2 et J+7 arrivent dans la prochaine version de l'appli.</p>
+      <p class="texte-doux">Contacts avec e-mail arrivés au délai de relance. « Relancer » ouvre votre messagerie avec le message prêt : relisez-le avant d'envoyer.</p>
+      <ul id="liste-relancer" class="liste"></ul>
+      <p id="aucun-a-relancer" class="texte-doux">Personne à relancer pour l'instant.</p>
     </section>
 
     <!-- Réglages -->
@@ -197,6 +230,14 @@
     <p>Carnet de salon par Optimisons.ai · L'IA, simplement.</p>
     <p>Tout reste dans votre compte Google, sans IA générative.</p>
   </footer>
+
+  <div id="question-relance" class="question" role="dialog" aria-labelledby="question-relance-texte" hidden>
+    <p id="question-relance-texte">Relance envoyée ?</p>
+    <div class="question__boutons">
+      <button id="relance-oui" class="bouton bouton-principal" type="button">Oui</button>
+      <button id="relance-plus-tard" class="bouton bouton-secondaire" type="button">Plus tard</button>
+    </div>
+  </div>
 
   <div id="message" class="message" role="status" aria-live="polite"></div>
 

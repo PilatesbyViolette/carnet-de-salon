@@ -4,6 +4,8 @@
 import * as base from './base.js';
 import * as drive from './drive.js';
 import { compteConnu } from './connexion.js';
+import { CLE_CODE, CLE_ESSAI } from './activation.js';
+import { plusAncienne } from './dates.js';
 
 // Réglages par défaut, repris du prototype (REGLAGES_DEFAUT) avec Votre nom, les délais et le code d'activation.
 export const REGLAGES_DEFAUT = [
@@ -67,11 +69,13 @@ async function retrouverOuCreer(cle, nom, type, creer) {
   return id;
 }
 
-// Crée le tableau avec les réglages locaux s'il y en a, sinon ceux par défaut.
+// Crée le tableau avec les réglages locaux s'il y en a (essai compris), sinon ceux par défaut.
 async function creerTableauInitial() {
   const locaux = await base.tousLesReglages();
   const lignes = REGLAGES_DEFAUT.map(([cle, defaut]) => [cle, locaux[cle] !== undefined ? locaux[cle] : defaut]);
+  if (locaux[CLE_ESSAI]) lignes.push([CLE_ESSAI, locaux[CLE_ESSAI]]);
   await base.ecrireReglage('_reglagesAEnvoyer', false);
+  await base.ecrireReglage('_activationAEnvoyer', false);
   return drive.creerTableau(lignes);
 }
 
@@ -87,26 +91,77 @@ export async function enregistrerReglages(valeurs) {
   await base.ecrireReglage('_reglagesAEnvoyer', true);
 }
 
-// Envoie les réglages locaux vers l'onglet Réglages, en gardant les clés du tableau que l'appli ne connaît pas.
+// Envoie les réglages locaux (tous, ou seulement ceux de l'activation) vers l'onglet Réglages,
+// en gardant les clés du tableau que l'appli ne connaît pas et la date d'essai la plus ancienne.
 export async function envoyerReglagesSiBesoin() {
-  if (!(await base.lireReglage('_reglagesAEnvoyer', false))) return;
+  const tout = await base.lireReglage('_reglagesAEnvoyer', false);
+  if (!tout && !(await base.lireReglage('_activationAEnvoyer', false))) return;
   const distants = await drive.lireReglagesTableau(ids.tableau);
   const fusion = new Map(distants.filter((l) => l[0]).map((l) => [l[0], l[1] || '']));
   const locaux = await base.tousLesReglages();
-  Object.entries(locaux).forEach(([cle, valeur]) => { if (!estInterne(cle)) fusion.set(cle, String(valeur)); });
+  const cles = tout ? Object.keys(locaux).filter((cle) => !estInterne(cle)) : [CLE_CODE, CLE_ESSAI].filter((cle) => locaux[cle]);
+  cles.forEach((cle) => fusion.set(cle, String(locaux[cle])));
+  const essai = plusAncienne(locaux[CLE_ESSAI] || '', distants.filter((l) => l[0] === CLE_ESSAI).map((l) => l[1])[0] || '');
+  if (essai) { fusion.set(CLE_ESSAI, essai); await base.ecrireReglage(CLE_ESSAI, essai); }
   const lignes = [['Réglage', 'Valeur']].concat([...fusion.entries()]);
   await drive.ecrirePlage(ids.tableau, 'Réglages', 'A1:B' + lignes.length, lignes);
   await base.ecrireReglage('_reglagesAEnvoyer', false);
+  await base.ecrireReglage('_activationAEnvoyer', false);
 }
 
-// Relit le tableau : copie locale des lignes de contacts et des réglages (sauf réglages locaux pas encore envoyés).
+// Relit le tableau : copie locale des lignes de contacts et des réglages.
 export async function rafraichirDepuisTableau() {
   const lignes = await drive.lireLignes(ids.tableau);
   await base.ecrireReglage('_lignes', lignes.map(ligneVersContact));
-  if (!(await base.lireReglage('_reglagesAEnvoyer', false))) {
-    const distants = await drive.lireReglagesTableau(ids.tableau);
-    for (const [cle, valeur] of distants) if (cle && !estInterne(cle)) await base.ecrireReglage(cle, valeur || '');
+  const enAttente = await base.lireReglage('_reglagesAEnvoyer', false);
+  const activationEnAttente = await base.lireReglage('_activationAEnvoyer', false);
+  for (const [cle, valeur] of await drive.lireReglagesTableau(ids.tableau)) {
+    if (!cle || estInterne(cle)) continue;
+    if (cle === CLE_ESSAI) await base.ecrireReglage(cle, plusAncienne(await base.lireReglage(cle, ''), valeur || ''));
+    else if (!enAttente && !(cle === CLE_CODE && activationEnAttente)) await base.ecrireReglage(cle, valeur || '');
   }
+}
+
+// Lignes du tableau (copie locale), avec les relances notées mais pas encore écrites dans le tableau.
+export async function lignesAvecRelances() {
+  const lignes = await base.lireReglage('_lignes', []);
+  const attente = await base.lireReglage('_relancesAEnvoyer', []);
+  attente.forEach((r) => { const c = lignes.find((l) => l.id === r.id); if (c) c[r.champ] = r.texte; });
+  return lignes;
+}
+
+// Note une relance envoyée (local d'abord) ; elle part vers le tableau au prochain passage de la file.
+export async function noterRelance(id, type, texte) {
+  const attente = await base.lireReglage('_relancesAEnvoyer', []);
+  const j2 = type === 'J+2';
+  attente.push({ id, champ: j2 ? 'relanceJ2' : 'relanceJ7', colonne: j2 ? 'L' : 'M', texte });
+  await base.ecrireReglage('_relancesAEnvoyer', attente);
+}
+
+// Nombre de relances notées pas encore écrites dans le tableau.
+export async function relancesEnAttente() {
+  return (await base.lireReglage('_relancesAEnvoyer', [])).length;
+}
+
+// Écrit les relances notées dans leur colonne (ligne retrouvée par Id) ; une ligne disparue est ignorée.
+export async function envoyerRelancesSiBesoin() {
+  const attente = await base.lireReglage('_relancesAEnvoyer', []);
+  if (!attente.length) return;
+  const lignesIds = await drive.lireIds(ids.tableau);
+  for (const r of attente) {
+    const numero = numeroDeLigne(lignesIds, r.id);
+    if (numero) await drive.ecrirePlage(ids.tableau, 'Contacts', r.colonne + numero, [[r.texte]]);
+  }
+  const envoyee = (r) => attente.some((a) => a.id === r.id && a.champ === r.champ);
+  await base.ecrireReglage('_relancesAEnvoyer', (await base.lireReglage('_relancesAEnvoyer', [])).filter((r) => !envoyee(r)));
+}
+
+// Numéro de ligne d'un contact d'après la colonne Id (« ligne-N » pour une ligne sans Id) ; 0 s'il a disparu.
+function numeroDeLigne(lignesIds, id) {
+  const index = lignesIds.indexOf(id);
+  if (index >= 1) return index + 1;
+  const m = /^ligne-(\d+)$/.exec(id);
+  return m && !lignesIds[Number(m[1]) - 1] ? Number(m[1]) : 0;
 }
 
 // Transforme une ligne du tableau (colonnes A à N) en objet contact.

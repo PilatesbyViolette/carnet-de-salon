@@ -1,5 +1,6 @@
 // File d'attente de synchronisation : envoie vers le Drive tout contact local pas encore écrit.
 // Pour chaque contact, dans l'ordre : envoi de la photo, lecture OCR + tri, écriture de la ligne (sans doublon).
+// Envoie aussi les réglages modifiés et les relances notées (« Envoyée le JJ/MM »).
 // Un seul passage à la fois. Trois échecs consécutifs : état « erreur », visible sur l'accueil avec « Réessayer ».
 
 import * as base from './base.js';
@@ -49,6 +50,7 @@ export async function synchroniser() {
     if (!jetonValide()) { annoncer({ reconnexion: true }); return; }
     await espace.preparerEspace();
     await espace.envoyerReglagesSiBesoin();
+    await espace.envoyerRelancesSiBesoin();
     for (const contact of await contactsATraiter()) await traiterContact(contact.id);
     await espace.rafraichirDepuisTableau();
     annoncer({ fini: true });

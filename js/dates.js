@@ -24,3 +24,16 @@ export function dateCourte(iso) {
   if (isNaN(d)) return '';
   return deux(d.getDate()) + '/' + deux(d.getMonth() + 1) + ' ' + deux(d.getHours()) + ':' + deux(d.getMinutes());
 }
+
+// Jour et mois « JJ/MM » (texte « Envoyée le JJ/MM » des relances).
+export function jourMois(d) {
+  return deux(d.getDate()) + '/' + deux(d.getMonth() + 1);
+}
+
+// La plus ancienne de deux dates ISO (une date vide ou illisible est ignorée) ; '' si aucune.
+export function plusAncienne(a, b) {
+  const ta = Date.parse(a), tb = Date.parse(b);
+  if (isNaN(ta)) return isNaN(tb) ? '' : b;
+  if (isNaN(tb)) return a;
+  return ta <= tb ? a : b;
+}

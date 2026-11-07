@@ -24,12 +24,12 @@ function montrer(nom) {
   if (ecrans[nom] && ecrans[nom].afficher) ecrans[nom].afficher();
 }
 
-// Affiche un écran ; l'accueil et la connexion sont les écrans « racine », les autres s'empilent dans l'historique.
+// Affiche un écran ; accueil, connexion et activation sont les écrans « racine », les autres s'empilent dans l'historique.
 export function afficher(nom, depuisHistorique) {
   montrer(nom);
   if (depuisHistorique) return;
   const etat = history.state || {};
-  const racine = nom === 'accueil' || nom === 'connexion';
+  const racine = ['accueil', 'connexion', 'activation'].includes(nom);
   if (racine) {
     if (etat.empile) { ignorerRetour = true; history.back(); } else history.replaceState({ ecran: nom }, '');
   } else if (etat.empile) {

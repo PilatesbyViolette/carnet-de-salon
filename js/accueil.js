@@ -6,6 +6,8 @@ import * as espace from './espace.js';
 import { synchroniser, reessayer, dernierEtat } from './file.js';
 import { jetonValide, demanderJeton, jetonDansLeGeste, compteConnu } from './connexion.js';
 import { jourDuJour, dateCourte } from './dates.js';
+import { contactsARelancer } from './relances.js';
+import { finEssai, essaiTermine } from './activation.js';
 
 // Écrit un texte dans l'élément d'identifiant donné.
 function ecrire(id, texte) {
@@ -48,6 +50,18 @@ function elementErreur(c) {
     bouton);
 }
 
+// Pastille de l'essai : date de fin, ou « Essai terminé » (toucher ouvre l'écran d'achat).
+function pastilleEssai() {
+  const fin = finEssai();
+  const p = document.getElementById('pastille-essai');
+  p.hidden = fin == null;
+  if (fin == null) return;
+  const termine = essaiTermine();
+  p.classList.toggle('pastille-alerte', termine);
+  p.classList.toggle('pastille-bouton', termine);
+  p.querySelector('span').textContent = termine ? 'Essai terminé : toucher pour acheter' : 'Essai jusqu\'au ' + dateCourte(fin);
+}
+
 // Rafraîchit tout l'accueil à partir de la vue locale (tableau + contacts pas encore écrits).
 export async function rafraichirAccueil() {
   const contacts = await espace.vueContacts();
@@ -69,6 +83,9 @@ export async function rafraichirAccueil() {
 
   const aVerifier = contacts.filter((c) => c.statut === base.A_VERIFIER && c.etat === 'ecrit').length;
   ecrire('compte-a-verifier', aVerifier ? String(aVerifier) : '');
+  const aRelancer = (await contactsARelancer()).length;
+  ecrire('compte-a-relancer', aRelancer ? String(aRelancer) : '');
+  pastilleEssai();
 
   const derniers = contacts.slice(0, 5);
   document.getElementById('liste-derniers').replaceChildren(...derniers.map(elementContact));
@@ -84,9 +101,10 @@ function surReconnexion() {
 export function initAccueil() {
   enregistrerEcran('accueil', { afficher: rafraichirAccueil });
   document.getElementById('pastille-reconnexion').addEventListener('click', surReconnexion);
+  document.getElementById('pastille-essai').addEventListener('click', () => { if (essaiTermine()) afficher('essai'); });
   document.getElementById('bouton-a-verifier').addEventListener('click', () => afficher('verifier'));
   document.getElementById('bouton-a-relancer').addEventListener('click', () => afficher('relancer'));
   document.getElementById('bouton-reglages').addEventListener('click', () => afficher('reglages'));
   const siAccueil = () => { if (ecranAffiche() === 'accueil') rafraichirAccueil(); };
-  ['carnet:sync', 'carnet:contact', 'carnet:jeton', 'online', 'offline'].forEach((evt) => window.addEventListener(evt, siAccueil));
+  ['carnet:sync', 'carnet:contact', 'carnet:jeton', 'carnet:activation', 'online', 'offline'].forEach((evt) => window.addEventListener(evt, siAccueil));
 }

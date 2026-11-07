@@ -30,6 +30,7 @@ Test de l'étape 2, selon la règle de décision du document de test de connexio
 | 3 | 6 nov. | Pages du site (autre dépôt), Search Console vérifiée, passage en production et logo | Chez Nicolas |
 | 4 | 6 nov. | Appli de capture complète, local d'abord | Fait, à tester sur téléphone |
 | 5 | 6 nov. | Manifeste, icônes, service worker, aide à l'installation | Fait, à tester sur téléphone |
+| 6 | 7 nov. | Relances J+2 et J+7, activation par code, essai, outil de codes | Fait, à tester sur téléphone |
 
 ### Étape 4 · ce qui a été construit
 
@@ -43,7 +44,7 @@ Test de l'étape 2, selon la règle de décision du document de test de connexio
   - Accueil : compteurs du jour et du total (tableau et contacts locaux), pastilles « N contacts en attente d'envoi », « Hors connexion », « Reconnexion nécessaire » (au tap, nouveau jeton), envois en erreur, cinq derniers contacts.
   - À vérifier : liste, fiche modifiable avec le texte lu et le lien vers la photo, « Valider » met à jour la ligne trouvée par Id.
   - Réglages : tous les champs du § 5.4 (dont les deux modèles de relance), compte connecté, lien vers le tableau, « Synchroniser maintenant », déconnexion (refusée s'il reste des contacts non envoyés, second tap pour confirmer).
-  - À relancer : écran réservé, rempli à l'étape 6.
+  - À relancer : rempli à l'étape 6 (voir ci-dessous).
 - **Jeton** : demandé dans le geste (Se connecter, Enregistrer, Valider, Synchroniser, pastille), jamais après un `await`. Gardé en mémoire et dans `sessionStorage`, périmé 5 minutes avant expiration. Si l'exposant ne coche pas la case Google Drive sur l'écran Google, un message le lui dit.
 - **Erreurs** : toujours affichées dans un bandeau rouge en haut de l'écran (message Google tel quel), jamais seulement dans la console.
 - **Captures interrompues** (appli fermée pendant une saisie) : au démarrage suivant, gardées avec le statut « À vérifier » si une photo existe.
@@ -56,18 +57,48 @@ Test de l'étape 2, selon la règle de décision du document de test de connexio
 - Écran d'aide à l'installation : iPhone (Safari et Chrome) et Android, avec le bouton « Installer l'application » quand Chrome le propose. Affiché à la première ouverture si l'appli n'est pas installée, et accessible depuis Réglages.
 - Variante C (manifeste `display: browser` pour iPhone) : seulement si le test iPhone la retient.
 
+### Étape 6 · ce qui a été construit
+
+- **Relances** (`js/relances.js`) : la copie locale des lignes du tableau (relue à chaque synchronisation) donne l'écran « À relancer » : contacts avec e-mail arrivés au délai J+2 sans « Relance J+2 », puis au délai J+7 sans « Relance J+7 ». Délais lus dans Réglages. Tri par date (le plus ancien d'abord), badge J+2 ou J+7, objet affiché. Compteur sur le bouton de l'accueil.
+  - « Relancer » : lien `mailto:` avec `?subject=` et `&body=` encodés par `encodeURIComponent`, sauts de ligne `%0D%0A`.
+  - « Copier le message » : `navigator.clipboard.writeText`, repli par sélection (`execCommand('copy')`), sinon le message s'affiche sélectionné avec un message d'erreur.
+  - Au retour dans l'appli (`visibilitychange`) : « Relance J+2 envoyée à … ? Oui / Plus tard ». Oui note « Envoyée le JJ/MM » en local (le contact quitte la liste aussitôt) ; la file l'écrit dans la colonne L (J+2) ou M (J+7) par `values.update`, ligne retrouvée par Id.
+- **Activation** (`js/codes.js`, `js/activation.js`) : écran d'activation avant tout accès (avant même la connexion Google), avec « Pas encore de code ? Acheter ». Empreinte SHA-256 (`crypto.subtle.digest`) du code saisi comparée à `js/codes.js`. Code gardé dans `localStorage` et dans la clé Réglages « Code d'activation ». Réglages affiche le code et son état.
+  - Essai : début gardé dans `localStorage` et dans la clé Réglages « Essai commencé le ». Essai expiré : « Photographier » et « Saisir sans carte » ouvrent l'écran « Votre essai est terminé » (« Acheter », « J'ai déjà un code ») ; accueil, À vérifier, À relancer et Réglages restent accessibles. Pastille « Essai jusqu'au JJ/MM HH:MM » puis « Essai terminé » sur l'accueil. Un code d'achat ou de démo remplace l'essai.
+  - Lien d'achat : constante `LIEN_ACHAT` de `js/app.js` (provisoire, à remplacer par le lien Stripe).
+- **Outil de codes** (`outils/codes.js`, Node, hors site, sans dépendance) : `essai MIF2026 24 ["libellé"]`, `achat 20`, `demo 1`, `test`. Codes `CDS-XXXX-XXXX` (alphabet sans O, 0, I, 1, `crypto.randomInt`). Codes en clair et CSV (Code, Type, Statut, E-mail client, Date, Identifiant Stripe, Entreprise) seulement à l'écran et dans `outils/sortie/`, ignoré par Git.
+- **Codes en place** dans `js/codes.js` (empreintes seules) : MIF2026 (essai 24 h), 1 code de test d'une minute (**à retirer avant la recette**, puis changer `VERSION`), 1 code démo sans fin, 20 codes d'achat. Les codes en clair ont été remis à Nicolas hors du dépôt.
+
+#### Choix tranchés à l'étape 6 (Nicolas absent)
+
+1. **Fonction de remplissage** : introuvable dans le code (seule la liste des variables existait). Écrite dans `js/relances.js` : `{prenom}` = premier mot du Nom, `{entreprise}` et `{note}` du contact, `{salon}` = Nom du salon, `{exposant}` = Votre entreprise, `{signature}` = Votre signature (sinon Votre nom). Sans prénom, « Bonjour {prenom}, » devient « Bonjour, ». Une variable inconnue reste telle quelle.
+2. **Ordre des relances** : une seule ligne par contact. J+7 n'apparaît qu'une fois J+2 notée ; un contact jamais relancé reste en J+2 même après 7 jours. Jours comptés en jours de calendrier.
+3. **« Copier le message »** copie le corps seul (l'objet est affiché sur la carte). Il compte aussi comme relance ouverte : la question vient au retour dans l'appli.
+4. **« Oui » n'ouvre pas la fenêtre Google** : la relance est notée en local et part à la prochaine synchronisation (tout de suite si le jeton est valide). Déconnexion refusée tant qu'une relance notée n'est pas écrite.
+5. **Normalisation des codes** : majuscules, sans espaces **et sans tirets** (plus simple à taper sur téléphone). L'outil applique la même règle avant le calcul.
+6. **Date d'essai** : la plus ancienne des dates connues (téléphone, Réglages locaux, tableau) fait foi. C'est ce qui empêche la remise à zéro par réinstallation : la date du tableau, plus ancienne, l'emporte à la première synchronisation. L'essai est commun à tous les codes d'essai d'un même tableau (tester le code d'une minute consomme l'essai MIF2026 sur ce tableau ; pour repartir de zéro : effacer la clé « Essai commencé le » du tableau et les données du site sur le téléphone).
+7. **Révocation** : retirer une ligne de `js/codes.js` invalide le code au prochain lancement (l'empreinte gardée n'est plus reconnue). Changer `VERSION` dans `sw.js`.
+8. **Limite assumée** : la vérification se fait dans le navigateur. Une personne qui modifie le stockage du téléphone peut la contourner ; c'est une protection de principe, suffisante pour ce produit.
+
 ### Vérifié sur ordinateur (Chrome, serveur local sur le port 8080)
+
+Étape 6, Chromium sans tête (Playwright), 41 vérifications vertes : écran d'activation au premier lancement, code faux refusé, MIF2026 accepté (minuscules et espaces compris), code et date d'essai gardés en local et dans les Réglages, date du tableau plus ancienne retenue ; code de test qui expire en une minute réelle, bloque « Photographier » et « Saisir sans carte » sans bloquer À relancer ni À vérifier, écran « Votre essai est terminé » au démarrage, code d'achat (tapé sans tiret) qui débloque la capture ; code démo ; liste à relancer triée avec badges, `mailto:` (objet, corps, accents, `&`, `%0D%0A`, aucun `+`), « Bonjour, » sans prénom, modèle J+7 ; copie dans le presse-papiers ; question au retour, Oui (« Envoyée le JJ/MM », colonne L) et Plus tard ; tri 31 / 31 ; aucune erreur console. L'écriture réelle dans le tableau reste à vérifier sur téléphone.
+
+Étapes 4 et 5 :
 
 Tests du tri 31 / 31 ; saisie sans carte enregistrée en base locale avec e-mail et téléphone tirés de la note ; compteurs et pastilles justes ; photo réduite à 1 600 px, en niveaux de gris, affichée tout de suite ; « Annuler » supprime la capture ; service worker actif avec 27 fichiers en cache ; l'appli s'ouvre serveur arrêté et montre l'accueil avec les contacts locaux ; aucune erreur dans la console. La chaîne Google réelle (connexion, envoi, OCR, écriture) reste à vérifier par Nicolas sur téléphone.
 
 ## À faire par Nicolas (mains ou téléphones)
 
 1. Test de connexion iPhone (`https://app.optimisons.ai/test/`), puis me renvoyer la grille.
-2. Tests de sortie des étapes 4 et 5 sur les deux téléphones (voir ci-dessous).
+2. Tests de sortie des étapes 4 et 5 sur les deux téléphones.
+3. Tests de sortie de l'étape 6 : relance ouverte dans Gmail, Outlook et Mail d'Apple ; « Envoyée le JJ/MM » écrit dans le tableau ; code faux refusé ; MIF2026 accepté ; code de test expiré qui bloque la capture ; bouton Acheter ; code d'achat qui débloque.
+4. Avant la recette : retirer la ligne du code de test de `js/codes.js`, changer `VERSION` dans `sw.js` ; remplacer `LIEN_ACHAT` par le lien Stripe (avec `?prefilled_promo_code=MIF2026`).
 
 ## Entretien
 
 - **À chaque modification d'un fichier de l'appli : changer `VERSION` dans `sw.js`**, sinon les téléphones gardent l'ancienne version en cache.
 - Tout nouveau fichier de l'appli doit être ajouté à la liste `FICHIERS` de `sw.js`.
 - QR code du flyer : `node outils/qrcode.js` ; icônes : `node outils/icones.js` (après `npm install` dans `outils/`).
+- Codes d'activation : `node outils/codes.js` (sans `npm install`). **Ne jamais committer un code d'achat ou de démo en clair** : seules les empreintes vont dans `js/codes.js`.
 - Tests du tri : https://app.optimisons.ai/tests/tri.test.html (doivent rester verts).

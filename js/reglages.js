@@ -6,6 +6,7 @@ import * as espace from './espace.js';
 import { synchroniser } from './file.js';
 import { jetonDansLeGeste, jetonValide, demanderJeton, deconnecter, compteConnu } from './connexion.js';
 import { doitMontrerAide } from './aide.js';
+import { descriptionActivation } from './activation.js';
 
 // Champ de l'écran -> clé de l'onglet Réglages.
 const CHAMPS = {
@@ -34,7 +35,7 @@ export function ouvrirReglagesPremiereFois() {
 async function remplir() {
   for (const [id, cle] of Object.entries(CHAMPS)) document.getElementById(id).value = await espace.reglage(cle);
   document.getElementById('reg-compte').textContent = compteConnu() || 'non connecté';
-  document.getElementById('reg-code').textContent = (await espace.reglage('Code d\'activation')) || 'saisi à l\'étape d\'activation';
+  document.getElementById('reg-code').textContent = descriptionActivation();
   const lien = document.getElementById('reg-lien-tableau');
   const adresse = await espace.lienTableau();
   lien.hidden = !adresse;
@@ -76,11 +77,16 @@ function surSynchroniser() {
   jeton.then(() => { message('Synchronisation lancée'); return synchroniser(); }).catch((e) => montrerErreur(e.message));
 }
 
-// Déconnexion : refusée s'il reste des contacts à envoyer ; second tap pour confirmer ; vide le téléphone.
+// Déconnexion : refusée s'il reste des contacts ou des relances à envoyer ; second tap pour confirmer ; vide le téléphone.
 async function surDeconnexion() {
   const enAttente = (await base.tousLesContacts()).filter((c) => c.statut && c.etat !== 'ecrit').length;
   if (enAttente) {
     montrerErreur(pluriel(enAttente, 'contact') + ' pas encore envoyé(s) vers votre Drive : synchronisez avant de vous déconnecter.');
+    return;
+  }
+  const relances = await espace.relancesEnAttente();
+  if (relances) {
+    montrerErreur(pluriel(relances, 'relance') + ' notée(s) pas encore écrite(s) dans votre tableau : synchronisez avant de vous déconnecter.');
     return;
   }
   const bouton = document.getElementById('bouton-deconnexion');

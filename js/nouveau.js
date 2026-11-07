@@ -9,6 +9,7 @@ import { synchroniser } from './file.js';
 import { jetonDansLeGeste, jetonValide } from './connexion.js';
 import { extraireChamps } from './tri.js';
 import { dateIso } from './dates.js';
+import { captureAutorisee } from './activation.js';
 
 const CHAMPS = ['note', 'nom', 'entreprise', 'email', 'tel', 'site'];
 const CHAMPS_LUS = ['nom', 'entreprise', 'email', 'tel', 'site'];
@@ -154,15 +155,24 @@ async function abandonner() {
   if (contact.photoId && jetonValide()) drive.supprimerFichier(contact.photoId).catch(() => {});
 }
 
+// Capture refusée si l'essai est terminé : ouvre l'écran « Votre essai est terminé » ; vrai si refusée.
+function captureRefusee(evenement) {
+  if (captureAutorisee()) return false;
+  if (evenement) evenement.preventDefault();
+  afficher('essai');
+  return true;
+}
+
 // Branche l'appareil photo, les boutons et les champs.
 export function initNouveau() {
   enregistrerEcran('nouveau', { quitter: () => { if (capture) abandonner(); } });
   const entree = document.getElementById('entree-photo');
+  document.querySelector('label[for="entree-photo"]').addEventListener('click', captureRefusee);
   entree.addEventListener('change', () => {
-    if (entree.files[0]) nouveauAvecPhoto(entree.files[0]);
+    if (entree.files[0] && !captureRefusee()) nouveauAvecPhoto(entree.files[0]);
     entree.value = '';
   });
-  document.getElementById('bouton-sans-carte').addEventListener('click', nouveauSansPhoto);
+  document.getElementById('bouton-sans-carte').addEventListener('click', () => { if (!captureRefusee()) nouveauSansPhoto(); });
   document.getElementById('formulaire-contact').addEventListener('submit', surEnregistrer);
   document.getElementById('bouton-annuler').addEventListener('click', () => afficher('accueil'));
   CHAMPS.forEach((n) => champ(n).addEventListener('input', colorerVides));

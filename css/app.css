@@ -178,6 +178,27 @@ a.bouton-lien { display: inline-block; }
 .aide-bloc ol { padding-left: 20px; }
 .aide-bloc li { margin: 8px 0; }
 
+/* ---------- Activation et relances (étape 6) ---------- */
+
+.erreur-champ { margin: 4px 0 8px; padding: 10px 12px; border-radius: 10px; background: var(--corail-pale); color: var(--alerte); font: 500 14px/1.35 var(--f-texte); }
+.relance { margin: 10px 0; padding: 12px 14px; background: var(--blanc); border: 1px solid var(--bordure); border-radius: var(--rayon); }
+.relance__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.relance__objet { margin: 8px 0 0; font: 400 13px/1.35 var(--f-mono); color: var(--gris); overflow-wrap: anywhere; }
+.relance__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.relance__actions .bouton { margin: 0; min-height: var(--tactile); font-size: 15px; }
+.badge-relance { background: var(--bleu); color: var(--blanc); }
+.zone-copie { position: fixed; top: 0; left: 0; width: 1px; height: 1px; opacity: 0; }
+.zone-visible { width: 100%; margin-top: 10px; }
+.question {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 15;
+  width: calc(100% - 32px); max-width: 528px; transform: translateX(-50%);
+  padding: 14px 16px; background: var(--blanc); border: 2px solid var(--bleu); border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(9, 13, 36, .18);
+}
+.question p { margin: 0 0 8px; font-weight: 700; }
+.question__boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.question__boutons .bouton { margin: 0; min-height: var(--tactile); }
+
 /* ---------- Bandeaux, message, pied ---------- */
 
 .bandeau {
