@@ -2,7 +2,7 @@
 //   node outils/codes.js achat 20   20 codes CDS-XXXX-XXXX : lignes d'empreintes et CSV
 //   node outils/codes.js demo 1     code(s) de démonstration, sans fin
 //   node outils/codes.js test       code d'essai d'une minute (à retirer avant la recette)
-// L'essai gratuit de 24 h ne demande pas de code ; MIF2026 est le code promo Stripe, pas un code d'activation.
+// L'essai gratuit de 24 h se lance par son bouton, sans code. MIF2026 (200 € de réduction chez Stripe) n'est pas reconnu par l'appli.
 // Les codes en clair ne sortent qu'à l'écran et dans outils/sortie/ (ignoré par Git) : ne jamais les committer.
 // Seules les empreintes SHA-256 vont dans js/codes.js (le dépôt est public).
 

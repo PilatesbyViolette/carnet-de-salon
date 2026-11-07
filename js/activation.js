@@ -11,7 +11,6 @@ import { dateIso, dateCourte } from './dates.js';
 export const CLE_CODE = 'Code d\'activation';
 export const CLE_ESSAI = 'Essai commencé le';
 export const DUREE_ESSAI_HEURES = 24;
-const CODE_PROMO = 'MIF2026';          // code promo Stripe du prix salon : saisi dans l'appli, il démarre l'essai gratuit
 const LOCAL_ACTIVATION = 'activation'; // { essai: true } ou { code, empreinte }
 const LOCAL_DEBUT_TEST = 'debutCodeTest';
 const HEURE_MS = 60 * 60 * 1000;
@@ -56,12 +55,9 @@ function signaler() {
   window.dispatchEvent(new CustomEvent('carnet:activation'));
 }
 
-// Activation gardée sur le téléphone ; un ancien MIF2026 gardé comme code devient l'essai gratuit.
+// Activation gardée sur le téléphone, ou null.
 function lireActivation() {
-  let memo = null;
-  try { memo = JSON.parse(lireLocal(LOCAL_ACTIVATION)); } catch (e) { memo = null; }
-  if (memo && memo.code && normaliserCode(memo.code) === CODE_PROMO) return { essai: true };
-  return memo;
+  try { return JSON.parse(lireLocal(LOCAL_ACTIVATION)); } catch (e) { return null; }
 }
 
 // Début de l'essai gratuit : clé Réglages « Essai commencé le », créée maintenant si absente puis envoyée au tableau.
@@ -152,15 +148,10 @@ export async function commencerEssai() {
   signaler();
 }
 
-// Active un code saisi (MIF2026 démarre l'essai gratuit) ; lève une erreur lisible sinon.
+// Active un code saisi (achat, démonstration ou test) ; lève une erreur lisible sinon.
 export async function activer(saisie) {
   const normal = normaliserCode(saisie);
   if (!normal) throw new Error('Saisissez votre code d\'activation.');
-  if (normal === CODE_PROMO) {
-    await commencerEssai();
-    if (essaiTermine()) throw new Error('Votre essai gratuit est déjà terminé. Achetez un code pour continuer à capturer.');
-    return;
-  }
   const valeur = await empreinte(normal);
   if (!trouverCode(valeur)) throw new Error('Code inconnu. Vérifiez chaque caractère (les codes CDS ne contiennent ni O, ni 0, ni I, ni 1).');
   ecrireLocal(LOCAL_ACTIVATION, JSON.stringify({ code: codeAffiche(normal), empreinte: valeur }));

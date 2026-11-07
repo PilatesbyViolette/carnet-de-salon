@@ -1,7 +1,7 @@
 // Codes d'activation : empreintes SHA-256 seulement, jamais de code en clair (le dépôt est public).
 // Lignes produites par node outils/codes.js ; le code est mis en majuscules, sans espaces ni tirets, avant le calcul.
 // type : achat ou demo (dureeHeures null : sans fin), essai (fin après dureeHeures, réservé au code de test).
-// L'essai gratuit de 24 h ne demande pas de code ; MIF2026 est le code promo Stripe, pas un code d'activation.
+// L'essai gratuit de 24 h se lance par son bouton, sans code. MIF2026 (200 € de réduction chez Stripe) n'est pas reconnu par l'appli.
 // Retirer une ligne révoque le code ; changer alors VERSION dans sw.js.
 
 export const CODES = [
