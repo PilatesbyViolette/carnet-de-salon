@@ -7,6 +7,7 @@ import * as espace from './espace.js';
 import { synchroniser } from './file.js';
 import { jetonValide } from './connexion.js';
 import { dateCourte, jourMois } from './dates.js';
+import { civiliteEtNom } from './prenoms.js';
 
 const JOUR_MS = 24 * 60 * 60 * 1000;
 const EN_COURS = 'relanceEnCours'; // relance ouverte, en attente de la réponse « Relance envoyée ? »
@@ -29,10 +30,12 @@ export function relanceDue(c, delai2, delai7, maintenant) {
   return '';
 }
 
-// Valeurs des variables des modèles pour un contact ({prenom} : premier mot du nom).
+// Valeurs des variables des modèles pour un contact.
+// {prenom} : « M. Durand » ou « Mme Durand » (civilité d'après le prénom, puis nom de famille) ;
+// vide si le prénom est inconnu ou mixte, et « Bonjour {prenom}, » devient alors « Bonjour, ».
 export function valeursModele(c, r) {
   return {
-    prenom: String(c.nom || '').trim().split(/\s+/)[0], entreprise: c.entreprise || '', note: c.note || '',
+    prenom: civiliteEtNom(c.nom), entreprise: c.entreprise || '', note: c.note || '',
     salon: r.salon || '', exposant: r.exposant || '', signature: r.signature || ''
   };
 }

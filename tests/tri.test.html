@@ -55,7 +55,14 @@
         attendu: { nom: 'Hélène D\'Arcy', email: 'hello@arcy-design.fr' } },
       { nom: 'C1 : lettre hors alphabet français',
         carte: 'Zoé Łukasz\nArchitecte\nzoe@studio-l.fr', note: '',
-        attendu: { nom: 'Zoé Łukasz', email: 'zoe@studio-l.fr' } }
+        attendu: { nom: 'Zoé Łukasz', email: 'zoe@studio-l.fr' } },
+      // Nom de famille en tête sur la carte : remis dans l'ordre « Prénom Nom ».
+      { nom: 'Nom de famille en capitales en tête',
+        carte: 'DURAND Jérôme\nDirecteur\njdurand@durand-menuiserie.fr', note: '',
+        attendu: { nom: 'Jérôme Durand' } },
+      { nom: 'Nom de famille en tête, sans capitales',
+        carte: 'Durand Jérôme\nj.durand@atelier.fr', note: '',
+        attendu: { nom: 'Jérôme Durand' } }
     ];
 
     // Ajoute une ligne au tableau des résultats.

@@ -3,25 +3,12 @@
 // (docs/claude_carnet_de_salon_prototype_Code.gs). Testé par tests/tri.test.html.
 // Tâche 15 (C1) : nom plus tolérant (apostrophe typographique, ponctuation en fin de ligne, lettres accentuées
 // hors français, prénom courant reconnu même quand le domaine de l'e-mail reprend le nom de la personne).
+// Nom rendu dans l'ordre « Prénom Nom », même si la carte porte « DURAND Jérôme » ou « Durand Jérôme ».
+
+import { estPrenom } from './prenoms.js';
 
 export const MESSAGERIES_PERSO = ['gmail', 'googlemail', 'yahoo', 'hotmail', 'outlook', 'live', 'icloud', 'me',
   'orange', 'wanadoo', 'free', 'sfr', 'laposte', 'bbox', 'aol', 'gmx', 'protonmail', 'proton', 'msn', 'neuf'];
-
-// Prénoms courants (minuscules, sans accents) : un premier mot reconnu ici fait pencher la ligne vers le nom.
-const PRENOMS = new Set(('adrien agathe agnes alain alexandre alexandra alexis alice aline amandine amelie anais andre ' +
-  'anne annie antoine arnaud arthur audrey aurelie aurelien axel baptiste beatrice benjamin benoit bernard bertrand ' +
-  'brigitte bruno camille carole caroline catherine cecile celine charles charlotte chantal christian christine ' +
-  'christophe claire claude clement clemence colette coralie corinne cyril damien daniel david delphine denis didier ' +
-  'dominique dorothee edouard elisabeth elise elodie eloise emilie emma emmanuel emmanuelle eric estelle etienne eva ' +
-  'fabien fabienne fabrice fanny florence florian francis francois francoise frederic gabriel gaelle genevieve ' +
-  'gerard gilles guillaume helene henri herve hugo hugues ines isabelle jacques jean jeanne jerome joel jonathan ' +
-  'jordan joseph josephine julia julie julien juliette justine karine kevin laetitia laura laure laurence laurent lea ' +
-  'leo leon lise louis louise luc lucas lucie lucien ludovic magali manon marc marcel marie marine marion martin ' +
-  'martine mathieu mathilde matthieu maxime melanie michel michele mickael mireille monique morgane nadia nadine ' +
-  'nathalie nicolas nina noel noemie odile olivier oceane pascal pascale patrick patricia paul pauline philippe ' +
-  'pierre quentin raphael regis remi renaud rene richard robert romain sabine samuel sandra sandrine sarah sebastien ' +
-  'serge severine simon solene sophie stephane stephanie sylvain sylvie thierry thomas timothee valerie valentin ' +
-  'vanessa veronique victor vincent virginie xavier yann yannick yves yvonne zoe').split(' '));
 
 // Met en minuscules et retire les accents.
 export function sansAccent(s) {
@@ -42,6 +29,20 @@ export function nettoyer(t) {
     .replace(/(@[\w\-]+)\s*\.\s*([a-z]{2,6})\b/gi, '$1.$2')
     .replace(/(@[\w\-]+)(\s+point\s+[\w\-]+)+/gi, m => m.replace(/\s+point\s+/gi, '.'))
     .replace(/([\w.\-]+)\s+point\s+([\w\-]+@)/gi, '$1.$2');
+}
+
+// « DURAND Jérôme » ou « Durand Jérôme » -> « Jérôme DURAND » / « Jérôme Durand » : prénom devant, nom de famille après.
+function remettreEnOrdre(nom) {
+  const mots = String(nom || '').split(/\s+/).filter(Boolean);
+  if (mots.length < 2) return nom;
+  const dernier = mots[mots.length - 1];
+  const capitales = (m) => m.length > 1 && m === m.toUpperCase() && m !== m.toLowerCase();
+  // Dernier mot prénom connu et premier mot non : on inverse
+  if (estPrenom(dernier) && !estPrenom(mots[0])) return [dernier].concat(mots.slice(0, -1)).join(' ');
+  // Un seul mot en capitales, placé en tête, devant des mots en minuscules : c'est le nom de famille
+  const enCapitales = mots.filter(capitales);
+  if (enCapitales.length === 1 && capitales(mots[0]) && !capitales(dernier)) return mots.slice(1).concat(mots[0]).join(' ');
+  return nom;
 }
 
 // Extrait nom, entreprise, e-mail, téléphone et site du texte de la carte (et de la note dictée).
@@ -85,8 +86,8 @@ export function extraireChamps(texteCarte, note) {
     if (!mots.every(m => /^\p{L}[\p{L}'\-.]*$/u.test(m))) return;
     const motsN = mots.map(sansAccent);
     let s = 0;
-    // Premier mot (ou sa première partie : « Jean-Marc ») reconnu comme prénom courant
-    if (PRENOMS.has(motsN[0].split('-')[0])) s += 3;
+    // Premier ou dernier mot reconnu comme prénom courant (« Jean-Marc Durand », « DURAND Jérôme »)
+    if (estPrenom(mots[0]) || estPrenom(mots[mots.length - 1])) s += 3;
     if (morceaux.length && morceaux.some(m => motsN.some(w => w === m || (m.length > 2 && (w.startsWith(m) || m.startsWith(w)))))) s += 3;
     if (mots.every(m => /^\p{Lu}/u.test(m))) s += 1;
     if (l === l.toUpperCase()) s -= 1;
@@ -99,6 +100,7 @@ export function extraireChamps(texteCarte, note) {
   if (!nom && morceaux.length >= 2 && !generiques.test(morceaux[0])) {
     nom = morceaux.slice(0, 2).join(' ');
   }
+  nom = remettreEnOrdre(nom);
   if (nom && (nom === nom.toLowerCase() || nom.split(/\s+/).some(w => w.length > 1 && w === w.toUpperCase()))) nom = majuscule(nom);
 
   // Entreprise : forme juridique, sinon ligne proche du domaine, sinon ligne en capitales, sinon le domaine

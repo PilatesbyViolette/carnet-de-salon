@@ -2,7 +2,7 @@
 // « Cache d'abord » pour la liste ci-dessous uniquement ; tout le reste (Google, GIS, test/) passe par le réseau.
 // À CHAQUE MODIFICATION D'UN FICHIER DE L'APPLI : changer VERSION, sinon les téléphones garderont l'ancienne version.
 
-const VERSION = 'carnet-2026-11-08-1';
+const VERSION = 'carnet-2026-11-08-2';
 const FICHIERS = [
   '/',
   '/index.html',
@@ -25,6 +25,7 @@ const FICHIERS = [
   '/js/file.js',
   '/js/image.js',
   '/js/tri.js',
+  '/js/prenoms.js',
   '/js/dates.js',
   '/polices/archivo-var-latin.woff2',
   '/polices/plex-mono-400-latin.woff2',
