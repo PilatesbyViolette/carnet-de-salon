@@ -12,6 +12,7 @@ import { initVerifier } from './verifier.js';
 import { initReglages, ouvrirReglagesPremiereFois } from './reglages.js';
 import { initAide, doitMontrerAide } from './aide.js';
 import { initRelances } from './relances.js';
+import { initContacts } from './contacts.js';
 import { initActivation, chargerActivation, estActive, essaiTermine } from './activation.js';
 
 // Lien d'achat Stripe, sans code promo prérempli : le client saisit lui-même son code sur la page Stripe.
@@ -97,6 +98,7 @@ async function demarrer() {
   initActivation(ouvrirApresActivation);
   initRelances();
   initAccueil();
+  initContacts();
   initNouveau();
   initVerifier();
   initReglages();

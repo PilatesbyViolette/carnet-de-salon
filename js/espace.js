@@ -5,6 +5,7 @@ import * as base from './base.js';
 import * as drive from './drive.js';
 import { compteConnu } from './connexion.js';
 import { CLE_CODE, CLE_ESSAI } from './activation.js';
+import { ajouterOperation, appliquerOperations, numeroDeLigne, envoyerOperations, idPhoto } from './operations.js';
 
 // Réglages par défaut, repris du prototype (REGLAGES_DEFAUT) avec Votre nom, les délais et le code d'activation.
 export const REGLAGES_DEFAUT = [
@@ -82,6 +83,7 @@ async function creerTableauInitial() {
 export function oublierEspace() {
   espaceVerifie = false;
   ids.tableau = ids.dossier = null;
+  ongletContacts = null;
 }
 
 // Enregistre des réglages en local et les marque à envoyer vers l'onglet Réglages.
@@ -123,7 +125,7 @@ export async function rafraichirDepuisTableau() {
 
 // Lignes du tableau (copie locale), avec les relances notées mais pas encore écrites dans le tableau.
 export async function lignesAvecRelances() {
-  const lignes = await base.lireReglage('_lignes', []);
+  const lignes = appliquerOperations(await base.lireReglage('_lignes', []), await operationsEnAttente());
   const attente = await base.lireReglage('_relancesAEnvoyer', []);
   attente.forEach((r) => { const c = lignes.find((l) => l.id === r.id); if (c) c[r.champ] = r.texte; });
   return lignes;
@@ -155,14 +157,6 @@ export async function envoyerRelancesSiBesoin() {
   await base.ecrireReglage('_relancesAEnvoyer', (await base.lireReglage('_relancesAEnvoyer', [])).filter((r) => !envoyee(r)));
 }
 
-// Numéro de ligne d'un contact d'après la colonne Id (« ligne-N » pour une ligne sans Id) ; 0 s'il a disparu.
-function numeroDeLigne(lignesIds, id) {
-  const index = lignesIds.indexOf(id);
-  if (index >= 1) return index + 1;
-  const m = /^ligne-(\d+)$/.exec(id);
-  return m && !lignesIds[Number(m[1]) - 1] ? Number(m[1]) : 0;
-}
-
 // Transforme une ligne du tableau (colonnes A à N) en objet contact.
 function ligneVersContact(l, index) {
   const v = (i) => l[i] || '';
@@ -181,7 +175,8 @@ export function contactVersLigne(c, nomPrisPar) {
 
 // Vue d'ensemble : lignes du tableau + contacts locaux pas encore écrits, du plus récent au plus ancien.
 export async function vueContacts() {
-  const lignes = await base.lireReglage('_lignes', []);
+  // Modifications et suppressions pas encore envoyées : déjà visibles
+  const lignes = appliquerOperations(await base.lireReglage('_lignes', []), await operationsEnAttente());
   const locaux = await base.tousLesContacts();
   const parId = new Map(lignes.map((l) => [l.id, l]));
   locaux.forEach((c) => {
@@ -193,6 +188,63 @@ export async function vueContacts() {
     }
   });
   return [...parId.values()].sort((a, b) => String(b.creeLe).localeCompare(String(a.creeLe)));
+}
+
+// ---------- Modifications et suppressions (file _operationsAEnvoyer, envoyée par la file d'attente) ----------
+
+// Opérations notées mais pas encore envoyées vers le tableau.
+export async function operationsEnAttente() {
+  return base.lireReglage('_operationsAEnvoyer', []);
+}
+
+// Ajoute une opération à la file locale.
+async function noterOperation(op) {
+  await base.ecrireReglage('_operationsAEnvoyer', ajouterOperation(await operationsEnAttente(), op));
+}
+
+// Modifie un contact depuis sa fiche (local d'abord). Pas encore écrit dans le tableau : la file écrira la ligne avec
+// ces valeurs. Déjà écrit : la ligne sera mise à jour (retrouvée par son Id), sans toucher aux colonnes de relance.
+export async function modifierContact(contact, champs) {
+  const local = await base.majContact(contact.id, (c) => {
+    const valeurs = Object.assign({}, champs);
+    if (c.texte == null && !valeurs.texte) delete valeurs.texte; // lecture de la carte encore attendue
+    Object.assign(c, valeurs);
+  });
+  if (local && local.etat !== 'ecrit') return;
+  await noterOperation({ type: 'modifier', id: contact.id, champs });
+}
+
+// Supprime un contact : retiré du téléphone tout de suite ; sa ligne (retrouvée par son Id, si elle existe) et la
+// photo de sa carte (mise à la corbeille Drive) partent avec la file d'attente, hors connexion compris.
+export async function supprimerContactPartout(contact) {
+  const local = await base.lireContact(contact.id);
+  await base.supprimerContact(contact.id);
+  const photoId = (local && local.photoId) || idPhoto(contact.photoLien);
+  await noterOperation({ type: 'supprimer', id: contact.id, photoId });
+}
+
+// Envoie les modifications et suppressions notées ; chacune est retirée de la file (et appliquée à la copie locale
+// du tableau) dès qu'elle est faite.
+export async function envoyerOperationsSiBesoin() {
+  const file = await operationsEnAttente();
+  if (!file.length) return;
+  const api = {
+    lireIds: () => drive.lireIds(ids.tableau),
+    ecrirePlage: (cellules, valeurs) => drive.ecrirePlage(ids.tableau, 'Contacts', cellules, valeurs),
+    supprimerLigne: async (numero) => drive.supprimerLigne(ids.tableau, await idOngletContacts(), numero),
+    mettreALaCorbeille: (id) => drive.mettreALaCorbeille(id)
+  };
+  await envoyerOperations(file, api, async (op) => {
+    await base.ecrireReglage('_operationsAEnvoyer', (await operationsEnAttente()).filter((o) => o.cle !== op.cle));
+    await base.ecrireReglage('_lignes', appliquerOperations(await base.lireReglage('_lignes', []), [op]));
+  });
+}
+
+// Identifiant de l'onglet Contacts (pour supprimer une ligne), lu une fois par session.
+let ongletContacts = null;
+async function idOngletContacts() {
+  if (ongletContacts == null) ongletContacts = await drive.idOnglet(ids.tableau, 'Contacts');
+  return ongletContacts;
 }
 
 // Valide un contact « À vérifier » : met à jour sa ligne (trouvée par id) et passe le statut à « Vérifié dans l'appli ».

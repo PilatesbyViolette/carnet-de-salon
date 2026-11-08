@@ -56,9 +56,9 @@ async function contactsATraiter() {
     .sort((a, b) => String(a.creeLe).localeCompare(String(b.creeLe)));
 }
 
-// Vrai s'il reste au moins un contact à traiter.
+// Vrai s'il reste au moins un contact à traiter, ou une modification ou suppression à envoyer.
 export async function resteDuTravail() {
-  return (await contactsATraiter()).length > 0;
+  return (await contactsATraiter()).length > 0 || (await espace.operationsEnAttente()).length > 0;
 }
 
 // Un passage complet de la file ; si un passage tourne déjà, un nouveau est lancé juste après.
@@ -74,6 +74,7 @@ export async function synchroniser() {
     await avecReprises(() => espace.preparerEspace());
     await avecReprises(() => espace.envoyerReglagesSiBesoin());
     await avecReprises(() => espace.envoyerRelancesSiBesoin());
+    await avecReprises(() => espace.envoyerOperationsSiBesoin()); // modifications et suppressions de contacts
     for (const contact of await contactsATraiter()) await traiterContact(contact.id);
     await avecReprises(() => espace.rafraichirDepuisTableau());
     annoncer({ fini: true });
@@ -112,12 +113,15 @@ async function etapePhoto(id) {
   if (!c || !c.photo || c.photoId) return;
   const nom = 'carte-' + String(c.creeLe).slice(0, 10) + '-' + id.slice(0, 8) + '.jpg';
   const fichier = await drive.envoyerPhoto(c.photo, espace.idDossier(), nom);
-  annoncerContact(await base.majContact(id, (x) => {
+  const maj = await base.majContact(id, (x) => {
     x.photoId = fichier.id;
     x.photoLien = fichier.webViewLink || '';
     x.etat = 'photo_envoyee';
     x.essais = 0;
-  }));
+  });
+  // Contact supprimé pendant l'envoi de sa photo : la photo part aussi à la corbeille
+  if (!maj) { await drive.mettreALaCorbeille(fichier.id); return; }
+  annoncerContact(maj);
 }
 
 // Étape 2 : lecture OCR et tri ; remplit seulement les champs restés vides (jamais ce que l'exposant a tapé).

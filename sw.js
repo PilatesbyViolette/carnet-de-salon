@@ -2,7 +2,7 @@
 // « Cache d'abord » pour la liste ci-dessous uniquement ; tout le reste (Google, GIS, test/) passe par le réseau.
 // À CHAQUE MODIFICATION D'UN FICHIER DE L'APPLI : changer VERSION, sinon les téléphones garderont l'ancienne version.
 
-const VERSION = 'carnet-2026-11-08-5';
+const VERSION = 'carnet-2026-11-09-1';
 const FICHIERS = [
   '/',
   '/index.html',
@@ -11,6 +11,8 @@ const FICHIERS = [
   '/js/app.js',
   '/js/interface.js',
   '/js/accueil.js',
+  '/js/contacts.js',
+  '/js/operations.js',
   '/js/nouveau.js',
   '/js/verifier.js',
   '/js/reglages.js',

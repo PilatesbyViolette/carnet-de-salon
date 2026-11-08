@@ -179,6 +179,35 @@ export async function ecrirePlage(idTableau, onglet, cellules, valeurs) {
   await envoyerJson(SHEETS + '/' + idTableau + '/values/' + plage(onglet, cellules) + '?valueInputOption=RAW', 'PUT', { values: valeurs });
 }
 
+// Identifiant numérique (sheetId) d'un onglet d'après son titre.
+export async function idOnglet(idTableau, titre) {
+  const reponse = await appelGoogle(SHEETS + '/' + idTableau + '?fields=sheets.properties(sheetId,title)');
+  const onglet = ((await reponse.json()).sheets || []).find((s) => s.properties.title === titre);
+  if (!onglet) throw new Error('Onglet « ' + titre + ' » introuvable dans le tableau');
+  return onglet.properties.sheetId;
+}
+
+// Supprime une ligne d'un onglet (numéro de ligne à partir de 1, comme dans Google Sheets).
+export async function supprimerLigne(idTableau, idOngletNum, numero) {
+  await envoyerJson(SHEETS + '/' + idTableau + ':batchUpdate', 'POST', {
+    requests: [{ deleteDimension: { range: { sheetId: idOngletNum, dimension: 'ROWS', startIndex: numero - 1, endIndex: numero } } }]
+  });
+}
+
+// Place un fichier dans la corbeille Drive ; un fichier déjà disparu (404) n'est pas une erreur.
+export async function mettreALaCorbeille(id) {
+  try {
+    await envoyerJson(DRIVE + '/files/' + id + '?fields=id', 'PATCH', { trashed: true });
+  } catch (e) {
+    if (e.statut !== 404) throw e;
+  }
+}
+
+// Télécharge une photo du Drive (image de la fiche contact).
+export async function lirePhoto(id) {
+  return (await appelGoogle(DRIVE + '/files/' + id + '?alt=media')).blob();
+}
+
 // Lit les paires de l'onglet Réglages (sans l'en-tête).
 export async function lireReglagesTableau(idTableau) {
   const reponse = await appelGoogle(SHEETS + '/' + idTableau + '/values/' + plage('Réglages', 'A2:B'));

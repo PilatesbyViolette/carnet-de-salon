@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carnet de salon · Tests des contacts</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    td, th { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: top; }
+    .vert { color: #0a7a2f; font-weight: bold; }
+    .rouge { color: #b00020; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <!-- Tests de la modification et de la suppression de contacts. À ouvrir par un serveur : https://app.optimisons.ai/tests/contacts.test.html -->
+  <h1 id="bilan">Tests des contacts : en cours</h1>
+  <table>
+    <thead><tr><th>Cas</th><th>Attendu</th><th>Obtenu</th><th>Résultat</th></tr></thead>
+    <tbody id="resultats"></tbody>
+  </table>
+
+  <script type="module">
+    import { lancerTests } from './contacts.cas.js';
+
+    const resultats = await lancerTests();
+    let verts = 0;
+    for (const r of resultats) {
+      const ok = r.attendu === r.obtenu;
+      if (ok) verts++;
+      const tr = document.createElement('tr');
+      [r.nom, r.attendu, r.obtenu, ok ? 'vert' : 'ROUGE'].forEach((texte, i) => {
+        const td = document.createElement('td');
+        td.textContent = texte;
+        if (i === 3) td.className = ok ? 'vert' : 'rouge';
+        tr.appendChild(td);
+      });
+      document.getElementById('resultats').appendChild(tr);
+    }
+    const bilan = document.getElementById('bilan');
+    bilan.textContent = 'Tests des contacts : ' + verts + ' / ' + resultats.length + (verts === resultats.length ? ' verts' : ' (ÉCHEC)');
+    bilan.className = verts === resultats.length ? 'vert' : 'rouge';
+  </script>
+</body>
+</html>

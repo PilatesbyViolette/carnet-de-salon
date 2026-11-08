@@ -99,6 +99,42 @@
       <h2 class="sur-titre">Derniers contacts</h2>
       <ul id="liste-derniers" class="liste"></ul>
       <p id="aucun-contact" class="texte-doux">Aucun contact pour l'instant. Photographiez votre première carte.</p>
+      <button id="bouton-tous-contacts" class="bouton-lien" type="button" hidden>Tous les contacts</button>
+    </section>
+
+    <!-- Fiche d'un contact : consulter, modifier, supprimer -->
+    <section id="ecran-fiche" class="ecran" hidden>
+      <header class="entete">
+        <button id="fiche-retour" class="bouton-lien" type="button">Retour</button>
+        <h1 class="titre-ecran">Fiche contact</h1>
+      </header>
+      <p id="fiche-date" class="sur-titre"></p>
+      <div id="fiche-apercu" class="apercu" hidden>
+        <img id="fiche-image" alt="Photo de la carte">
+      </div>
+      <a id="fiche-lien-photo" class="bouton-lien" href="#" target="_blank" rel="noopener" hidden>Voir la photo de la carte</a>
+      <form id="formulaire-fiche" class="formulaire" novalidate autocomplete="off">
+        <label class="champ">Note<textarea id="fiche-note" rows="3" autocapitalize="sentences"></textarea></label>
+        <label class="champ">Nom<input id="fiche-nom" type="text" autocapitalize="words"></label>
+        <label class="champ">Entreprise<input id="fiche-entreprise" type="text"></label>
+        <label class="champ">E-mail<input id="fiche-email" type="email" inputmode="email" autocapitalize="off" spellcheck="false"></label>
+        <label class="champ">Téléphone<input id="fiche-tel" type="tel" inputmode="tel"></label>
+        <label class="champ">Site<input id="fiche-site" type="text" inputmode="url" autocapitalize="off" spellcheck="false"></label>
+        <label class="champ">Texte lu<textarea id="fiche-texte" class="texte-lu-modifiable" rows="6" spellcheck="false"></textarea></label>
+        <button class="bouton bouton-corail" type="submit">Enregistrer</button>
+      </form>
+      <button id="fiche-supprimer" class="bouton bouton-discret fiche-supprimer" type="button">Supprimer ce contact</button>
+    </section>
+
+    <!-- Tous les contacts : du plus récent au plus ancien, recherche par nom ou entreprise -->
+    <section id="ecran-contacts" class="ecran" hidden>
+      <header class="entete">
+        <button class="bouton-lien" type="button" data-retour>Accueil</button>
+        <h1 class="titre-ecran">Tous les contacts</h1>
+      </header>
+      <label class="champ">Rechercher<input id="recherche-contacts" type="search" placeholder="Nom ou entreprise" autocomplete="off" enterkeyhint="search"></label>
+      <ul id="liste-tous" class="liste"></ul>
+      <p id="aucun-trouve" class="texte-doux" hidden>Aucun contact trouvé.</p>
     </section>
 
     <!-- Nouveau contact -->
@@ -238,6 +274,15 @@
     <div class="question__boutons">
       <button id="relance-oui" class="bouton bouton-principal" type="button">Oui</button>
       <button id="relance-plus-tard" class="bouton bouton-secondaire" type="button">Plus tard</button>
+    </div>
+  </div>
+
+  <!-- Confirmation avant suppression d'un contact -->
+  <div id="confirmation" class="question question--alerte" role="alertdialog" aria-modal="true" aria-labelledby="confirmation-texte" hidden>
+    <p id="confirmation-texte"></p>
+    <div class="question__boutons">
+      <button id="confirmation-oui" class="bouton bouton-alerte" type="button">Supprimer</button>
+      <button id="confirmation-non" class="bouton bouton-secondaire" type="button">Annuler</button>
     </div>
   </div>
 

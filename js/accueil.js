@@ -8,6 +8,7 @@ import { jetonValide, demanderJeton, jetonDansLeGeste, compteConnu } from './con
 import { jourDuJour, dateCourte } from './dates.js';
 import { contactsARelancer } from './relances.js';
 import { finEssai, essaiTermine } from './activation.js';
+import { nomAffiche, elementContact } from './contacts.js';
 
 // Écrit un texte dans l'élément d'identifiant donné.
 function ecrire(id, texte) {
@@ -21,22 +22,8 @@ function pastille(id, visible, texte) {
   if (visible && texte) p.querySelector('span').textContent = texte;
 }
 
-// Nom à afficher pour un contact.
-export function nomAffiche(c) {
-  return c.nom || c.entreprise || c.email || 'Contact sans nom';
-}
-
-// Élément de liste pour un contact (nom, entreprise, heure, badge d'état).
-function elementContact(c) {
-  let badge = null;
-  if (c.source === 'local' && c.etat !== 'ecrit') badge = el('span', { class: 'badge badge-attente' }, 'En attente');
-  else if (c.statut === base.A_VERIFIER) badge = el('span', { class: 'badge badge-verifier' }, 'À vérifier');
-  return el('li', { class: 'contact' },
-    el('div', { class: 'contact__texte' },
-      el('div', { class: 'contact__nom' }, nomAffiche(c)),
-      el('div', { class: 'contact__info' }, [c.entreprise && c.nom ? c.entreprise : '', dateCourte(c.creeLe)].filter(Boolean).join(' · '))),
-    badge);
-}
+// Nom à afficher et ligne de contact (tap = fiche) : communs avec « Tous les contacts ».
+export { nomAffiche } from './contacts.js';
 
 // Élément pour un envoi en erreur, avec le message Google et le bouton « Réessayer ».
 function elementErreur(c) {
@@ -90,6 +77,7 @@ export async function rafraichirAccueil() {
   const derniers = contacts.slice(0, 5);
   document.getElementById('liste-derniers').replaceChildren(...derniers.map(elementContact));
   document.getElementById('aucun-contact').hidden = derniers.length > 0;
+  document.getElementById('bouton-tous-contacts').hidden = derniers.length === 0;
 }
 
 // Tap sur « Reconnexion nécessaire » : nouveau jeton dans le geste, puis synchronisation.
@@ -106,5 +94,5 @@ export function initAccueil() {
   document.getElementById('bouton-a-relancer').addEventListener('click', () => afficher('relancer'));
   document.getElementById('bouton-reglages').addEventListener('click', () => afficher('reglages'));
   const siAccueil = () => { if (ecranAffiche() === 'accueil') rafraichirAccueil(); };
-  ['carnet:sync', 'carnet:contact', 'carnet:jeton', 'carnet:activation', 'online', 'offline'].forEach((evt) => window.addEventListener(evt, siAccueil));
+  ['carnet:sync', 'carnet:contact', 'carnet:contacts', 'carnet:jeton', 'carnet:activation', 'online', 'offline'].forEach((evt) => window.addEventListener(evt, siAccueil));
 }

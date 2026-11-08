@@ -133,6 +133,25 @@ a.bouton-lien { display: inline-block; }
   background: var(--blanc); border: 1px solid var(--bordure); border-radius: var(--rayon);
 }
 .contact-bouton { width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+/* Lignes de contact (accueil, Tous les contacts) : tap = fiche ; pas de sélection de texte ni de menu à l'appui long */
+.ligne-contact { position: relative; }
+.ligne-contact .contact-bouton {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.ligne-contact .contact-bouton:active { background: var(--bleu-pale); }
+/* Corbeille de la ligne (appui long) : zone tactile de 48 px, trait simple, couleur d'alerte de l'appli */
+.corbeille {
+  position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
+  display: none; align-items: center; justify-content: center;
+  width: var(--tactile); height: var(--tactile); padding: 0;
+  border: 1px solid var(--bordure); border-radius: 10px; background: var(--corail-pale); color: var(--alerte);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.corbeille svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ligne-contact--corbeille .corbeille { display: flex; }
+.ligne-contact--corbeille .contact-bouton { border-color: var(--corail); padding-right: 68px; }
+.ligne-contact--corbeille .badge { visibility: hidden; }
 .contact__texte { min-width: 0; }
 .contact__nom { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .contact__info { font: 400 13px/1.3 var(--f-mono); color: var(--gris); }
@@ -157,6 +176,8 @@ a.bouton-lien { display: inline-block; }
   transition: border-color var(--transition), background-color var(--transition);
 }
 .champ textarea { resize: vertical; }
+.champ .texte-lu-modifiable { font: 400 14px/1.4 var(--f-mono); }
+.champ input[type="search"] { -webkit-appearance: none; appearance: none; }
 .champ input:focus, .champ textarea:focus { outline: 2px solid var(--bleu); outline-offset: 1px; border-color: var(--bleu); }
 .champ .vide { border: 2px solid var(--corail); background: var(--corail-pale); }
 .deux-colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -199,6 +220,11 @@ a.bouton-lien { display: inline-block; }
 .question p { margin: 0 0 8px; font-weight: 700; }
 .question__boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .question__boutons .bouton { margin: 0; min-height: var(--tactile); }
+.question--alerte { z-index: 16; border-color: var(--alerte); }
+.question--alerte p { font-weight: 600; }
+.bouton-alerte { background: var(--alerte); color: var(--blanc); }
+/* Fiche : « Supprimer ce contact », discret, à l'écart d'« Enregistrer » */
+.fiche-supprimer { margin-top: 32px; min-height: var(--tactile); font-size: 15px; font-weight: 600; }
 
 /* ---------- Bandeaux, message, pied ---------- */
 
