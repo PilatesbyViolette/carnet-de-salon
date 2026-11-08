@@ -1,6 +1,7 @@
 // Codes d'activation : empreintes SHA-256 seulement, jamais de code en clair (le dépôt est public).
 // Lignes produites par node outils/codes.js ; le code est mis en majuscules, sans espaces ni tirets, avant le calcul.
-// type : achat ou demo (dureeHeures null : sans fin), essai (fin après dureeHeures).
+// type : achat, demo ou equipe (dureeHeures null : sans fin), essai (fin après dureeHeures).
+// equipe : codes CDE du responsable ; leur empreinte va aussi dans la clé Réglages « Code équipe » du tableau partagé.
 // L'essai gratuit de 24 h se lance par son bouton, sans code. MIF2026 (200 € de réduction chez Stripe) n'est pas reconnu par l'appli.
 // Retirer une ligne révoque le code ; changer alors VERSION dans sw.js.
 
@@ -27,5 +28,16 @@ export const CODES = [
   { empreinte: '9445620844747eac4dad4c950deced2b78e942241212cb999ff33156e5d02e8c', type: 'achat', dureeHeures: null, libelle: 'achat' },
   { empreinte: 'cd80ac619b5c435b9a05b1e81030725a16ac04c8979650ab413b8912e3651508', type: 'achat', dureeHeures: null, libelle: 'achat' },
   { empreinte: 'ffe66da004e1562f11fd6aefb4990c6c1591b8505bbf8ab776cadc637ffe4001', type: 'achat', dureeHeures: null, libelle: 'achat' },
-  { empreinte: '5bdfa059c8ad6c1f0e586598fce691fc74ac3652062f331abbe3e7d1f609c0de', type: 'achat', dureeHeures: null, libelle: 'achat' }
+  { empreinte: '5bdfa059c8ad6c1f0e586598fce691fc74ac3652062f331abbe3e7d1f609c0de', type: 'achat', dureeHeures: null, libelle: 'achat' },
+  // Équipe, sans fin (10 codes du 9 novembre 2026) : le responsable saisit le code, ses commerciaux rejoignent sans code
+  { empreinte: '63b24e785fa6d8b13b8f04592e38145da03b26984c159e3d13947866022abaa8', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: '4735b249531cfb3a27d467493dba189dfef2ab51a52f95f7d12472ce6566760c', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: '8d20ec73e819811cd1fff38feff45ba0386a555a60070f98f2c8d1a35dacb2ae', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: '9fa21da5929ffdfa639d8b4f0929da2354951150e935099c4b0aa2f11a22dd8e', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: 'be4a2244ba692f302bd78214bb46d28d529b237d03ced5fea64113e774080f90', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: '70f311447b409ff5f94b95411558d6a9d0ced144f2e9e21921a84f0e24bf234a', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: '748c304d1e0935efdbd8cfea28d67097f2f461264e767bf4035bc51dda35cd1f', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: 'dc52ddfd154561ecde75c12465b64d68d8213934d77c8b7f984969574220a14f', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: 'b37a5195234e287fe5d322ef2f5d33929dd0b6c0217ae54c778258b0f369497a', type: 'equipe', dureeHeures: null, libelle: 'équipe' },
+  { empreinte: '426753a51e49b107b0ef16452cda87452893e0587970f6b3f882c10557b3252a', type: 'equipe', dureeHeures: null, libelle: 'équipe' }
 ];

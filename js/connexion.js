@@ -2,7 +2,9 @@
 // Variante retenue au test de l'étape 2 (README.md, docs/claude_carnet_de_salon_test_connexion.md) :
 // Android installé = A (fenêtre). iPhone : test en attente ; si le test impose la redirection (B), elle sera ajoutée ici.
 
-const ID_CLIENT = '1000669439525-sknk86orjceivhtnjknfaj4jsg4c25f9.apps.googleusercontent.com';
+import { lireLocal, retirerLocal, lireSession, ecrireSession, retirerSession } from './stockage.js';
+
+const ID_CLIENT ='1000669439525-sknk86orjceivhtnjknfaj4jsg4c25f9.apps.googleusercontent.com';
 const PORTEE_DRIVE = 'https://www.googleapis.com/auth/drive.file';
 const PORTEES = PORTEE_DRIVE + ' openid email';
 const MARGE_MS = 5 * 60 * 1000; // jeton considéré périmé 5 minutes avant son expiration
@@ -18,7 +20,7 @@ function signaler() {
 
 // Relit le jeton gardé dans sessionStorage (il ne survit pas à la fermeture complète de l'appli).
 function relire() {
-  try { jeton = JSON.parse(sessionStorage.getItem('jeton')); } catch (e) { jeton = null; }
+  try { jeton = JSON.parse(lireSession('jeton')); } catch (e) { jeton = null; }
 }
 
 // Vrai si un jeton existe et n'expire pas dans les 5 minutes.
@@ -34,13 +36,13 @@ export function jetonActuel() {
 // Oublie le jeton (mémoire et session).
 export function oublierJeton() {
   jeton = null;
-  sessionStorage.removeItem('jeton');
+  retirerSession('jeton');
   signaler();
 }
 
 // E-mail du compte connecté, gardé sur le téléphone.
 export function compteConnu() {
-  return localStorage.getItem('compte') || '';
+  return lireLocal('compte') || '';
 }
 
 // Prépare le client dès que le script Google est chargé (appelé par l'attribut onload d'index.html).
@@ -67,7 +69,7 @@ function recevoirJeton(reponse) {
     return;
   }
   jeton = { valeur: reponse.access_token, expireA: Date.now() + Number(reponse.expires_in) * 1000 };
-  sessionStorage.setItem('jeton', JSON.stringify(jeton));
+  ecrireSession('jeton', JSON.stringify(jeton));
   signaler();
   if (demande) demande.ok(jeton.valeur);
 }
@@ -107,7 +109,7 @@ export function jetonDansLeGeste() {
 // Déconnexion : révoque le jeton auprès de Google et oublie le compte.
 export function deconnecter() {
   if (jeton && window.google && google.accounts) google.accounts.oauth2.revoke(jeton.valeur, () => {});
-  localStorage.removeItem('compte');
+  retirerLocal('compte');
   oublierJeton();
 }
 

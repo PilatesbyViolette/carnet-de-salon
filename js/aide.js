@@ -2,6 +2,7 @@
 // Affiché à la première ouverture si l'appli n'est pas installée, et accessible depuis Réglages.
 
 import { afficher, enregistrerEcran } from './interface.js';
+import { lireLocal, ecrireLocal } from './stockage.js';
 
 let invitationAndroid = null; // événement beforeinstallprompt gardé pour le bouton « Installer »
 
@@ -21,7 +22,7 @@ function plateforme() {
 // Vrai si l'aide doit s'afficher d'elle-même (première ouverture, appli pas installée).
 export function doitMontrerAide() {
   let dejaVue = false;
-  try { dejaVue = localStorage.getItem('aideVue') === 'oui'; } catch (e) { /* stockage indisponible */ }
+  dejaVue = lireLocal('aideVue') === 'oui';
   return !estInstallee() && !dejaVue;
 }
 
@@ -47,7 +48,7 @@ async function surInstaller() {
 export function initAide() {
   enregistrerEcran('aide', {
     afficher: preparer,
-    quitter: () => { try { localStorage.setItem('aideVue', 'oui'); } catch (e) { /* stockage indisponible */ } }
+    quitter: () => ecrireLocal('aideVue', 'oui')
   });
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); invitationAndroid = e; });
   document.getElementById('bouton-installer').addEventListener('click', surInstaller);

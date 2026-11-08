@@ -2,6 +2,8 @@
 //   node outils/codes.js achat 20   20 codes CDS-XXXX-XXXX : lignes d'empreintes et CSV
 //   node outils/codes.js demo 1     code(s) de démonstration, sans fin
 //   node outils/codes.js test       code d'essai d'une minute (à retirer avant la recette)
+//   node outils/codes.js equipe 10  10 codes Équipe CDE-XXXX-XXXX : lignes d'empreintes à l'écran, codes en clair
+//                                   seulement dans outils/codes_equipe_a_importer.csv (Code, Type, Statut ; ignoré par Git)
 // L'essai gratuit de 24 h se lance par son bouton, sans code. MIF2026 (200 € de réduction chez Stripe) n'est pas reconnu par l'appli.
 // Les codes en clair ne sortent qu'à l'écran et dans outils/sortie/ (ignoré par Git) : ne jamais les committer.
 // Seules les empreintes SHA-256 vont dans js/codes.js (le dépôt est public).
@@ -13,7 +15,9 @@ const path = require('path');
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans O, 0, I, 1
 const SORTIE = path.join(__dirname, 'sortie');
 const ENTETE_CSV = ['Code', 'Type', 'Statut', 'E-mail client', 'Date', 'Identifiant Stripe', 'Entreprise'];
-const LIBELLES = { achat: 'achat', demo: 'démo' };
+const LIBELLES = { achat: 'achat', demo: 'démo', equipe: 'équipe' };
+const PREFIXES = { equipe: 'CDE' }; // les autres types : CDS
+const CSV_EQUIPE = path.join(__dirname, 'codes_equipe_a_importer.csv');
 
 // Même règle que l'appli (js/activation.js) : majuscules, sans espaces ni tirets.
 function normaliser(code) {
@@ -32,11 +36,24 @@ function bloc() {
   return texte;
 }
 
-// Liste de n codes CDS-XXXX-XXXX tous différents.
-function codesUniques(n) {
+// Liste de n codes PREFIXE-XXXX-XXXX tous différents (CDS par défaut, CDE pour l'Équipe).
+function codesUniques(n, prefixe = 'CDS') {
   const codes = new Set();
-  while (codes.size < n) codes.add('CDS-' + bloc() + '-' + bloc());
+  while (codes.size < n) codes.add(prefixe + '-' + bloc() + '-' + bloc());
   return [...codes];
+}
+
+// Lot de codes Équipe : empreintes à l'écran (pour js/codes.js), codes en clair ajoutés au CSV à importer
+// dans la feuille « Carnet de salon · Codes » (colonnes Code, Type, Statut), jamais affichés.
+function lotEquipe(n) {
+  const codes = codesUniques(n, PREFIXES.equipe);
+  const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  console.log('  // Équipe, sans fin (' + n + ' codes du ' + date + ')');
+  console.log(codes.map((c) => ligneCodes(c, 'equipe', null, LIBELLES.equipe)).join('\n'));
+  const neuf = !fs.existsSync(CSV_EQUIPE);
+  const lignes = codes.map((c) => [c, 'equipe', 'libre'].join(',')).join('\n') + '\n';
+  fs.appendFileSync(CSV_EQUIPE, (neuf ? 'Code,Type,Statut\n' : '') + lignes);
+  console.log('\n// ' + n + ' codes en clair ajoutés à ' + CSV_EQUIPE + ' (fichier local, jamais commité)');
 }
 
 // Ligne de js/codes.js pour un code.
@@ -75,7 +92,8 @@ function principal(args) {
   const [commande, nombre] = args;
   if (commande === 'achat' || commande === 'demo') return lot(commande, Number(nombre) || 1, null, LIBELLES[commande]);
   if (commande === 'test') return lot('essai', 1, 1 / 60, 'test, à retirer avant la recette');
-  console.log('Usage :\n  node outils/codes.js achat 20\n  node outils/codes.js demo 1\n  node outils/codes.js test');
+  if (commande === 'equipe') return lotEquipe(Number(nombre) || 1);
+  console.log('Usage :\n  node outils/codes.js achat 20\n  node outils/codes.js demo 1\n  node outils/codes.js test\n  node outils/codes.js equipe 10');
   process.exitCode = 1;
 }
 
