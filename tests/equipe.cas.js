@@ -75,7 +75,7 @@ export async function lancerTests() {
   verifier('Invitation : objet', 'Rejoignez notre carnet de salon', m.objet);
   verifier('Invitation : lien et trois étapes', [true, true, true, true],
     [m.corps.includes(lien), m.corps.includes('1. '), m.corps.includes('2. '), m.corps.includes('3. ')]);
-  verifier('Invitation : jamais de tiret cadratin', false, /—/.test(m.corps));
+  verifier('Invitation : jamais de tiret cadratin', false, new RegExp('\\u2014').test(m.corps));
   verifier('Invitation : se termine par la signature', 'Bien cordialement,\nNicolas', m.corps.split('\n').slice(-2).join('\n'));
 
   return resultats;
