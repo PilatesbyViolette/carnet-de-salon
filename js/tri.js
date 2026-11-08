@@ -97,6 +97,17 @@ export function extraireChamps(texteCarte, note) {
     if (racineDom.length > 2 && !perso && (ligneN.indexOf(racineDom) >= 0 || racineDom.indexOf(ligneN) >= 0)) s -= 3;
     if (s > meilleur) { meilleur = s; nom = l; }
   });
+  // Repli : nom collé à la fonction ou à l'e-mail par la lecture (« Nicolas Menargues Consultant formateur en IA ») ;
+  // on garde le prénom connu en début de ligne et le mot qui le suit.
+  if (!nom) {
+    lignes.some(l => {
+      const mots = l.split(/\s+/);
+      if (mots.length < 3 || !estPrenom(mots[0]) || !/^\p{Lu}/u.test(mots[0])) return false;
+      if (!/^\p{Lu}[\p{L}'\-.]*$/u.test(mots[1]) || motsSociete.test(mots[1])) return false;
+      nom = mots[0] + ' ' + mots[1];
+      return true;
+    });
+  }
   if (!nom && morceaux.length >= 2 && !generiques.test(morceaux[0])) {
     nom = morceaux.slice(0, 2).join(' ');
   }

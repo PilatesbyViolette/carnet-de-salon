@@ -72,7 +72,14 @@
       { nom: 'Prénom puis nom, majuscules initiales',
         carte: 'Jérôme Durand\nDirecteur\njdurand@durand-menuiserie.fr', note: '',
         attendu: { nom: 'Jérôme Durand' },
-        debutRelance: 'Bonjour M. Durand,' }
+        debutRelance: 'Bonjour M. Durand,' },
+      // Nom collé à la fonction ou à l'e-mail par la lecture de la carte (carte sur deux colonnes).
+      { nom: 'Nom collé à la fonction',
+        carte: 'Nicolas Menargues Consultant formateur en IA\nnm@optimisons.ai\n+33 6 21 68 58 87\nwww.optimisons.ai', note: '',
+        attendu: { nom: 'Nicolas Menargues', email: 'nm@optimisons.ai', tel: '06 21 68 58 87', site: 'www.optimisons.ai' } },
+      { nom: 'Nom collé à l\'e-mail',
+        carte: 'Nicolas Menargues ✉ nm@optimisons.ai\nConsultant formateur en IA\n+33 6 21 68 58 87', note: '',
+        attendu: { nom: 'Nicolas Menargues', email: 'nm@optimisons.ai' } }
     ];
 
     // Ajoute une ligne au tableau des résultats.
