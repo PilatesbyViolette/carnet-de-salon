@@ -45,10 +45,14 @@ async function remplir() {
   document.getElementById('bouton-deconnexion').textContent = 'Se déconnecter';
 }
 
-// Lit les valeurs saisies ; les délais doivent être des nombres de jours.
+// Lit les valeurs saisies ; nom du salon obligatoire au premier lancement ; délais en nombres de jours.
 function lireValeurs() {
   const valeurs = {};
   for (const [id, cle] of Object.entries(CHAMPS)) valeurs[cle] = document.getElementById(id).value.trim();
+  if (premiereFois && !valeurs['Nom du salon']) {
+    document.getElementById('reg-salon').focus();
+    throw new Error('Indiquez le nom du salon : il figure dans vos relances');
+  }
   for (const cle of ['Délai J+2', 'Délai J+7']) {
     if (!/^\d{1,3}$/.test(valeurs[cle])) throw new Error('Le champ « ' + cle + ' » doit être un nombre de jours');
   }

@@ -1,9 +1,27 @@
 // Tri du texte lu sur une carte de visite.
-// Port fidèle, sans changement de logique, des fonctions sansAccent_, majuscule_, nettoyer_ et extraireChamps_
-// du prototype Apps Script (docs/claude_carnet_de_salon_prototype_Code.gs). Testé par tests/tri.test.html.
+// Port des fonctions sansAccent_, majuscule_, nettoyer_ et extraireChamps_ du prototype Apps Script
+// (docs/claude_carnet_de_salon_prototype_Code.gs). Testé par tests/tri.test.html.
+// Tâche 15 (C1) : nom plus tolérant (apostrophe typographique, ponctuation en fin de ligne, lettres accentuées
+// hors français, prénom courant reconnu même quand le domaine de l'e-mail reprend le nom de la personne).
 
 export const MESSAGERIES_PERSO = ['gmail', 'googlemail', 'yahoo', 'hotmail', 'outlook', 'live', 'icloud', 'me',
   'orange', 'wanadoo', 'free', 'sfr', 'laposte', 'bbox', 'aol', 'gmx', 'protonmail', 'proton', 'msn', 'neuf'];
+
+// Prénoms courants (minuscules, sans accents) : un premier mot reconnu ici fait pencher la ligne vers le nom.
+const PRENOMS = new Set(('adrien agathe agnes alain alexandre alexandra alexis alice aline amandine amelie anais andre ' +
+  'anne annie antoine arnaud arthur audrey aurelie aurelien axel baptiste beatrice benjamin benoit bernard bertrand ' +
+  'brigitte bruno camille carole caroline catherine cecile celine charles charlotte chantal christian christine ' +
+  'christophe claire claude clement clemence colette coralie corinne cyril damien daniel david delphine denis didier ' +
+  'dominique dorothee edouard elisabeth elise elodie eloise emilie emma emmanuel emmanuelle eric estelle etienne eva ' +
+  'fabien fabienne fabrice fanny florence florian francis francois francoise frederic gabriel gaelle genevieve ' +
+  'gerard gilles guillaume helene henri herve hugo hugues ines isabelle jacques jean jeanne jerome joel jonathan ' +
+  'jordan joseph josephine julia julie julien juliette justine karine kevin laetitia laura laure laurence laurent lea ' +
+  'leo leon lise louis louise luc lucas lucie lucien ludovic magali manon marc marcel marie marine marion martin ' +
+  'martine mathieu mathilde matthieu maxime melanie michel michele mickael mireille monique morgane nadia nadine ' +
+  'nathalie nicolas nina noel noemie odile olivier oceane pascal pascale patrick patricia paul pauline philippe ' +
+  'pierre quentin raphael regis remi renaud rene richard robert romain sabine samuel sandra sandrine sarah sebastien ' +
+  'serge severine simon solene sophie stephane stephanie sylvain sylvie thierry thomas timothee valerie valentin ' +
+  'vanessa veronique victor vincent virginie xavier yann yannick yves yvonne zoe').split(' '));
 
 // Met en minuscules et retire les accents.
 export function sansAccent(s) {
@@ -47,7 +65,10 @@ export function extraireChamps(texteCarte, note) {
   const mSite = tout.match(/(?:https?:\/\/)?www\.[a-z0-9\-]+(?:\.[a-z0-9\-]+)+/i);
   const site = mSite ? mSite[0].toLowerCase() : (domaine && !perso ? 'www.' + domaine : '');
 
-  const lignes = carte.split(/\n+|\s[|•·]\s/).map(l => l.trim()).filter(Boolean);
+  // Lignes nettoyées : apostrophe typographique remise droite, ponctuation de début et de fin retirée (« Marc Lambert, »).
+  const lignes = carte.split(/\n+|\s[|•·]\s/)
+    .map(l => l.replace(/[’‘ʼ]/g, '\'').trim().replace(/^[,;:\-–]+\s*|\s*[,;:\-–]+$/g, '').trim())
+    .filter(Boolean);
   const exclus = /(@|www\.|http|\d|\b(rue|avenue|bd|boulevard|chemin|place|cedex|t[ée]l|tel|mob|mobile|fax|mail|e-mail|portable)\b)/i;
   const motsSociete = /\b(SAS|SASU|SARL|EURL|SA|SCOP|SCI|GROUPE?|FRANCE|STUDIO|ATELIERS?|MAISON|MANUFACTURE|EDITIONS?|COMPAGNIE|CIE)\b/i;
   const generiques = /^(contact|info|infos|bonjour|hello|commercial|vente|ventes|admin|service|accueil|sales|direction|compta)$/;
@@ -61,11 +82,13 @@ export function extraireChamps(texteCarte, note) {
   lignes.forEach(l => {
     const mots = l.split(/\s+/);
     if (mots.length < 2 || mots.length > 4 || l.length > 40 || exclus.test(l)) return;
-    if (!mots.every(m => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'\-.]*$/.test(m))) return;
+    if (!mots.every(m => /^\p{L}[\p{L}'\-.]*$/u.test(m))) return;
     const motsN = mots.map(sansAccent);
     let s = 0;
+    // Premier mot (ou sa première partie : « Jean-Marc ») reconnu comme prénom courant
+    if (PRENOMS.has(motsN[0].split('-')[0])) s += 3;
     if (morceaux.length && morceaux.some(m => motsN.some(w => w === m || (m.length > 2 && (w.startsWith(m) || m.startsWith(w)))))) s += 3;
-    if (mots.every(m => /^[A-ZÀ-Ý]/.test(m))) s += 1;
+    if (mots.every(m => /^\p{Lu}/u.test(m))) s += 1;
     if (l === l.toUpperCase()) s -= 1;
     if (motsSociete.test(l)) s -= 2;
     const ligneN = motsN.join('').replace(/[^a-z0-9]/g, '');

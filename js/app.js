@@ -1,10 +1,10 @@
 // Démarrage de l'appli : activation, écrans, connexion, file d'attente, service worker et bandeaux.
 
-import { afficher, enregistrerEcran, montrerErreur, fermerErreur } from './interface.js';
+import { afficher, enregistrerEcran, montrerErreur, fermerErreur, message } from './interface.js';
 import * as base from './base.js';
 import * as drive from './drive.js';
 import * as espace from './espace.js';
-import { synchroniser, demarrerFile } from './file.js';
+import { synchroniser, demarrerFile, MESSAGE_ATTENTE } from './file.js';
 import { demanderJeton, compteConnu } from './connexion.js';
 import { initAccueil } from './accueil.js';
 import { initNouveau } from './nouveau.js';
@@ -14,8 +14,8 @@ import { initAide, doitMontrerAide } from './aide.js';
 import { initRelances } from './relances.js';
 import { initActivation, chargerActivation, estActive, essaiTermine } from './activation.js';
 
-// LIEN STRIPE À REMPLACER, ajouter ?prefilled_promo_code=MIF2026
-const LIEN_ACHAT = 'https://optimisons.ai/carnet-de-salon';
+// Lien d'achat Stripe, sans code promo prérempli : le client saisit lui-même son code sur la page Stripe.
+const LIEN_ACHAT = 'https://buy.stripe.com/28E5kCdjp5bC87f20Oc3m00';
 
 // Met le lien d'achat sur tous les liens « Acheter ».
 function brancherLiensAchat() {
@@ -81,7 +81,10 @@ function brancherBandeaux() {
   document.getElementById('bandeau-maj').addEventListener('click', () => location.reload());
   window.addEventListener('error', (e) => montrerErreur('Erreur : ' + e.message));
   window.addEventListener('unhandledrejection', (e) => montrerErreur('Erreur : ' + ((e.reason && e.reason.message) || e.reason)));
-  window.addEventListener('carnet:sync', (e) => { if (e.detail.erreur) montrerErreur('Envoi vers Google : ' + e.detail.erreur); });
+  window.addEventListener('carnet:sync', (e) => {
+    if (e.detail.erreur) montrerErreur('Envoi vers Google : ' + e.detail.erreur);
+    else if (e.detail.attente) message(MESSAGE_ATTENTE); // 5xx persistant : message bref, sans alarme
+  });
 }
 
 // Point d'entrée.

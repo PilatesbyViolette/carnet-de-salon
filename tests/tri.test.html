@@ -42,7 +42,20 @@
         attendu: { nom: '', entreprise: 'Fromagerie Lefort', email: 'contact@fromagerie-lefort.fr', tel: '03 20 11 22 33', site: 'www.fromagerie-lefort.fr' } },
       { nom: 'Dictée seule',
         carte: '', note: 'Rappeler mardi, claire.petit arobase gmail point com, 06 11 22 33 44, intéressée par la gamme pro',
-        attendu: { nom: 'Claire Petit', entreprise: '', email: 'claire.petit@gmail.com', tel: '06 11 22 33 44', site: '' } }
+        attendu: { nom: 'Claire Petit', entreprise: '', email: 'claire.petit@gmail.com', tel: '06 11 22 33 44', site: '' } },
+      // Tâche 15 (C1) : Prénom Nom sur une ligne, majuscules initiales (en gras sur la carte), non reporté avant correction.
+      { nom: 'C1 : nom repris par le domaine, adresse contact@',
+        carte: 'Marc Lambert\nConsultant en stratégie\ncontact@marclambert.fr\n06 12 34 56 78', note: '',
+        attendu: { nom: 'Marc Lambert', email: 'contact@marclambert.fr', tel: '06 12 34 56 78', site: 'www.marclambert.fr' } },
+      { nom: 'C1 : virgule en fin de ligne',
+        carte: 'Marc Lambert,\nConsultant\nmlambert@cabinet-conseil.fr', note: '',
+        attendu: { nom: 'Marc Lambert', email: 'mlambert@cabinet-conseil.fr' } },
+      { nom: 'C1 : apostrophe typographique',
+        carte: 'Hélène D’Arcy\nGérante\nhello@arcy-design.fr', note: '',
+        attendu: { nom: 'Hélène D\'Arcy', email: 'hello@arcy-design.fr' } },
+      { nom: 'C1 : lettre hors alphabet français',
+        carte: 'Zoé Łukasz\nArchitecte\nzoe@studio-l.fr', note: '',
+        attendu: { nom: 'Zoé Łukasz', email: 'zoe@studio-l.fr' } }
     ];
 
     // Ajoute une ligne au tableau des résultats.

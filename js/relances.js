@@ -37,10 +37,17 @@ export function valeursModele(c, r) {
   };
 }
 
-// Remplit un modèle des Réglages ; sans prénom, « Bonjour {prenom}, » devient « Bonjour, ». Variable inconnue gardée.
+// Remplit un modèle des Réglages ; sans prénom, « Bonjour {prenom}, » devient « Bonjour, ».
+// Sans salon, « échange au {salon} » devient « échange » ; sans entreprise, « le stand {exposant} » devient « notre stand ».
+// Variable inconnue gardée.
 export function remplirModele(modele, valeurs) {
   let texte = String(modele || '');
   if (!valeurs.prenom) texte = texte.replace(/[ \t]*\{prenom\}/g, '');
+  if (!valeurs.salon) {
+    texte = texte.replace(/[ \t]+(?:au|du|à|sur le|lors du|pendant le|après le)[ \t]+\{salon\}/gi, '')
+      .replace(/[ \t]*\{salon\}/g, '');
+  }
+  if (!valeurs.exposant) texte = texte.replace(/\ble stand[ \t]+\{exposant\}/g, 'notre stand');
   return texte.replace(/\{(\w+)\}/g, (tout, nom) => (Object.prototype.hasOwnProperty.call(valeurs, nom) ? valeurs[nom] : tout));
 }
 

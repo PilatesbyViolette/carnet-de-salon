@@ -10,10 +10,14 @@ import { jetonValide, compteConnu } from './connexion.js';
 import { extraireChamps } from './tri.js';
 
 const ESSAIS_MAX = 3;
+// Erreurs 5xx de Google (passagères) : nouvelles tentatives silencieuses, espacées.
+const PAUSES_5XX = [3000, 8000, 15000];
+export const MESSAGE_ATTENTE = 'Envoi vers Google en attente, nouvel essai automatique';
 const CHAMPS_LUS = ['nom', 'entreprise', 'email', 'tel', 'site'];
 
 let enCours = false;
 let relancer = false;
+let attenteServeur = false; // dernier passage arrêté par une erreur 5xx : on réessaie à la minute suivante
 export let dernierEtat = {};
 
 // Annonce l'état de la synchronisation à l'interface (hors ligne, reconnexion, erreur générale).
@@ -25,6 +29,24 @@ function annoncer(etat) {
 // Annonce la mise à jour d'un contact (l'écran Nouveau contact pré-remplit ses champs vides).
 function annoncerContact(contact) {
   if (contact) window.dispatchEvent(new CustomEvent('carnet:contact', { detail: contact }));
+}
+
+// Vrai pour une erreur passagère côté Google (500, 502, 503...).
+function erreurServeur(e) {
+  return !!e && e.statut >= 500;
+}
+
+// Lance fn ; en cas d'erreur 5xx, recommence après une pause, sans rien afficher.
+// Les étapes relancées sont sans doublon (l'écriture vérifie l'id avant d'ajouter la ligne).
+async function avecReprises(fn) {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (!erreurServeur(e) || i >= PAUSES_5XX.length) throw e;
+      await new Promise((r) => setTimeout(r, PAUSES_5XX[i]));
+    }
+  }
 }
 
 // Contacts qui attendent encore un envoi (hors erreurs), du plus ancien au plus récent.
@@ -44,19 +66,21 @@ export async function synchroniser() {
   if (enCours) { relancer = true; return; }
   if (!compteConnu()) return;
   enCours = true;
+  attenteServeur = false;
   annoncer({ enCours: true });
   try {
     if (!navigator.onLine) { annoncer({ horsLigne: true }); return; }
     if (!jetonValide()) { annoncer({ reconnexion: true }); return; }
-    await espace.preparerEspace();
-    await espace.envoyerReglagesSiBesoin();
-    await espace.envoyerRelancesSiBesoin();
+    await avecReprises(() => espace.preparerEspace());
+    await avecReprises(() => espace.envoyerReglagesSiBesoin());
+    await avecReprises(() => espace.envoyerRelancesSiBesoin());
     for (const contact of await contactsATraiter()) await traiterContact(contact.id);
-    await espace.rafraichirDepuisTableau();
+    await avecReprises(() => espace.rafraichirDepuisTableau());
     annoncer({ fini: true });
   } catch (e) {
     if (e instanceof drive.ErreurJeton) annoncer({ reconnexion: true });
     else if (e instanceof drive.ErreurReseau) annoncer({ horsLigne: true });
+    else if (erreurServeur(e)) { attenteServeur = true; annoncer({ attente: true }); }
     else annoncer({ erreur: e.message });
   } finally {
     enCours = false;
@@ -67,14 +91,16 @@ export async function synchroniser() {
 // Fait avancer un contact ; une erreur Google compte un essai, une erreur de jeton ou de réseau arrête le passage.
 async function traiterContact(id) {
   try {
-    await etapePhoto(id);
-    await etapeLecture(id);
-    await etapeEcriture(id);
+    await avecReprises(async () => {
+      await etapePhoto(id);
+      await etapeLecture(id);
+      await etapeEcriture(id);
+    });
   } catch (e) {
     if (e instanceof drive.ErreurJeton || e instanceof drive.ErreurReseau) throw e;
     annoncerContact(await base.majContact(id, (c) => {
       c.essais = (c.essais || 0) + 1;
-      c.derniereErreur = e.message;
+      c.derniereErreur = erreurServeur(e) ? 'Google indisponible un instant, nouvel essai automatique' : e.message;
       if (c.essais >= ESSAIS_MAX) c.etat = 'erreur';
     }));
   }
@@ -137,5 +163,5 @@ export async function reessayer(id) {
 export function demarrerFile() {
   window.addEventListener('online', () => synchroniser());
   window.addEventListener('offline', () => annoncer({ horsLigne: true }));
-  setInterval(async () => { if (await resteDuTravail()) synchroniser(); }, 60 * 1000);
+  setInterval(async () => { if (attenteServeur || await resteDuTravail()) synchroniser(); }, 60 * 1000);
 }

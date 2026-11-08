@@ -27,7 +27,7 @@
       <div class="connexion">
         <p class="logo"><img src="/images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
         <h1 class="titre-connexion">Essayez-le gratuitement pendant 24 heures<span class="point">.</span></h1>
-        <p class="texte-doux">Sans code et sans carte bancaire. Un seul essai par compte Google.</p>
+        <p class="texte-doux">Sans code et sans carte bancaire.</p>
         <button id="bouton-essai-gratuit" class="bouton bouton-principal" type="button">Commencer mon essai gratuit de 24 h</button>
         <form id="formulaire-activation" class="formulaire separe" novalidate autocomplete="off">
           <label class="champ">J'ai un code<span class="aide-champ">achat ou démonstration</span><input id="champ-code" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX"></label>
@@ -171,8 +171,9 @@
       <p id="reg-bienvenue" class="pastille" hidden><span>Bienvenue. Complétez vos réglages pour commencer.</span></p>
       <form id="formulaire-reglages" class="formulaire" novalidate autocomplete="off">
         <label class="champ">Votre entreprise<input id="reg-entreprise" type="text"></label>
-        <label class="champ">Nom du salon<input id="reg-salon" type="text" placeholder="MIF Expo"></label>
-        <label class="champ">Votre nom<span class="aide-champ">inscrit dans la colonne « Pris par »</span><input id="reg-nom" type="text" autocapitalize="words"></label>
+        <label class="champ">Nom du salon<span class="aide-champ">obligatoire</span><input id="reg-salon" type="text" placeholder="MIF Expo"></label>
+        <!-- « Votre nom » (colonne Pris par) masqué : réservé à la future version Équipe -->
+        <label class="champ" hidden>Votre nom<input id="reg-nom" type="text" autocapitalize="words"></label>
         <label class="champ">Votre signature<textarea id="reg-signature" rows="3"></textarea></label>
         <div class="deux-colonnes">
           <label class="champ">Délai J+2 (jours)<input id="reg-delai2" type="number" inputmode="numeric" min="0"></label>
