@@ -89,6 +89,20 @@ Test de l'étape 2, selon la règle de décision du document de test de connexio
 
 Tests du tri 31 / 31 ; saisie sans carte enregistrée en base locale avec e-mail et téléphone tirés de la note ; compteurs et pastilles justes ; photo réduite à 1 600 px, en niveaux de gris, affichée tout de suite ; « Annuler » supprime la capture ; service worker actif avec 27 fichiers en cache ; l'appli s'ouvre serveur arrêté et montre l'accueil avec les contacts locaux ; aucune erreur dans la console. La chaîne Google réelle (connexion, envoi, OCR, écriture) reste à vérifier par Nicolas sur téléphone.
 
+## Version Équipe (branche `equipe`, 9 novembre)
+
+Deux licences, même appli : Solo (690 €, 1 utilisateur) et Équipe (990 €, utilisateurs illimités).
+
+- **Codes Équipe** `CDE-XXXX-XXXX` : `node outils/codes.js equipe 10` ; empreintes dans `js/codes.js` (type `equipe`), codes en clair seulement dans `outils/codes_equipe_a_importer.csv` (ignoré par Git), à importer dans la feuille « Carnet de salon · Codes ».
+- **Responsable** : saisit le code Équipe ; son tableau devient le carnet de l'équipe. Onglet Réglages : `Mode` = `Équipe`, `Responsable` = son e-mail, `Code équipe` = empreinte SHA-256 (le code n'est jamais écrit en clair ; « Code d'activation » est masqué). Onglet `Équipe` : E-mail, Prénom, Rôle, Ajouté le. Colonne O « Compte » des contacts : e-mail de la personne qui a pris le contact (droits et filtres).
+- **Inviter** (Réglages > Mon équipe) : partage du tableau en écriture et du dossier des photos en lecture (`sendNotificationEmail=false`), ligne dans l'onglet Équipe, lien `?rejoindre=idDuTableau&entreprise=…` à envoyer par e-mail (mailto) ou à copier. **Retirer** : partages et ligne supprimés, avec confirmation ; ses contacts restent.
+- **Rejoindre** (commercial) : connexion Google, puis Google Picker (`js/picker.js`, clé `CLE_PICKER`, `setAppId`, filtré sur le tableau) qui donne l'accès `drive.file` au seul tableau choisi. Vérifications : `Mode` = `Équipe`, `Code équipe` reconnu dans `js/codes.js`, e-mail dans l'onglet Équipe. Pas de code ; vérifié à chaque synchronisation, retour à l'écran d'activation s'il est retiré. Ses photos vont dans un dossier de son propre Drive, partagé en lecture avec le responsable.
+- **Pris par** (prénom), relances par commercial (« Toute l'équipe » pour le responsable), compteurs par commercial sur l'accueil du responsable, filtre « Pris par » dans Tous les contacts. Droits : un commercial modifie et supprime ses contacts seulement ; le responsable, tout.
+- **Réglages** : ceux du responsable valent pour l'équipe (lecture seule chez les commerciaux) ; la signature d'un commercial reste sur son téléphone.
+- **Isolation** : `js/environnement.js` (base IndexedDB, préfixe de stockage, service worker, adresse des liens) ; tout le stockage du navigateur passe par `js/stockage.js`.
+- **Vente** : `ventes/Code.gs` (copie de référence du projet Apps Script) gère `LIEN_PAIEMENT_ID_EQUIPE` et envoie un code `equipe` avec le mode d'emploi du responsable.
+- **Tests** : `tests/equipe.test.html` (règles) ; `node tests/equipe.e2e.mjs` (bout en bout à deux personnes avec un faux Google ; `node tests/equipe.e2e.mjs equipe-test/` pour la copie de test).
+
 ## À faire par Nicolas (mains ou téléphones)
 
 1. Test de connexion iPhone (`https://app.optimisons.ai/test/`), puis me renvoyer la grille.
