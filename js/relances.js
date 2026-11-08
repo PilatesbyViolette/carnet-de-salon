@@ -42,6 +42,7 @@ export function valeursModele(c, r) {
 
 // Remplit un modèle des Réglages ; sans prénom, « Bonjour {prenom}, » devient « Bonjour, ».
 // Sans salon, « échange au {salon} » devient « échange » ; sans entreprise, « le stand {exposant} » devient « notre stand ».
+// Sans signature, le message se termine par « Bien cordialement, ».
 // Variable inconnue gardée.
 export function remplirModele(modele, valeurs) {
   let texte = String(modele || '');
@@ -51,6 +52,8 @@ export function remplirModele(modele, valeurs) {
       .replace(/[ \t]*\{salon\}/g, '');
   }
   if (!valeurs.exposant) texte = texte.replace(/\ble stand[ \t]+\{exposant\}/g, 'notre stand');
+  // Sans signature, la ligne {signature} disparaît : le message finit par « Bien cordialement, »
+  if (!valeurs.signature) texte = texte.replace(/(?:\r?\n)?[ \t]*\{signature\}[ \t]*/g, '').replace(/\s+$/, '');
   return texte.replace(/\{(\w+)\}/g, (tout, nom) => (Object.prototype.hasOwnProperty.call(valeurs, nom) ? valeurs[nom] : tout));
 }
 
@@ -76,7 +79,8 @@ async function reglagesRelance() {
     'J+2': { objet: await r('Objet J+2'), message: await r('Message J+2') },
     'J+7': { objet: await r('Objet J+7'), message: await r('Message J+7') },
     salon: await r('Nom du salon'), exposant: await r('Votre entreprise'),
-    signature: (await r('Votre signature')) || (await r('Votre nom'))
+    // Signature saisie dans les Réglages, sinon rien (jamais l'e-mail du compte ni « Votre nom »)
+    signature: await r('Votre signature')
   };
 }
 

@@ -23,6 +23,7 @@
   <script type="module">
     import { extraireChamps, nettoyer } from '../js/tri.js';
     import { remplirModele, valeursModele } from '../js/relances.js';
+    import { REGLAGES_DEFAUT } from '../js/espace.js';
 
     // Première ligne du message J+2 par défaut (js/espace.js)
     const MODELE_J2 = 'Bonjour {prenom},\n\nMerci pour votre passage';
@@ -104,6 +105,16 @@
     }
     total++;
     if (ligne('Nettoyage', 'arobase et point', 'a.b@c.fr', nettoyer('a.b arobase c point fr'))) verts++;
+
+    // Fin des relances par défaut (J+2 et J+7) : sans signature « Bien cordialement, », avec signature la signature en dessous.
+    for (const cle of ['Message J+2', 'Message J+7']) {
+      const modele = REGLAGES_DEFAUT.find(([c]) => c === cle)[1];
+      const fin = (signature) => remplirModele(modele, valeursModele({ nom: 'Jérôme Durand' }, { signature })).split('\n').slice(-2).join(' / ');
+      total++;
+      if (ligne(cle, 'fin sans signature', 'Bien cordialement,', remplirModele(modele, valeursModele({ nom: 'Jérôme Durand' }, {})).split('\n').pop())) verts++;
+      total++;
+      if (ligne(cle, 'fin avec signature', 'Bien cordialement, / Nicolas Menargues', fin('Nicolas Menargues'))) verts++;
+    }
 
     const bilan = document.getElementById('bilan');
     bilan.textContent = 'Tests du tri : ' + verts + ' / ' + total + (verts === total ? ' verts' : ' (ÉCHEC)');
