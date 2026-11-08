@@ -83,15 +83,17 @@ async function preparerEquipeResponsable() {
   await base.ecrireReglage('_equipe', R.lignesVersMembres(lignes));
 }
 
-// Lit Réglages et Équipe d'un tableau d'équipe ; accès refusé ou onglet absent : ErreurEquipe.
-async function lireTableauEquipe(id) {
+// Lit Réglages et Équipe d'un tableau d'équipe ; accès refusé ou onglet absent : ErreurEquipe (motif donné).
+const MOTIF_REJOINDRE = 'Ce carnet d\'équipe n\'est pas accessible avec votre compte Google (partage retiré, tableau supprimé ou ce n\'est pas un carnet d\'équipe).';
+const MOTIF_RETIRE = 'Vous n\'avez plus accès au carnet de votre équipe : le responsable vous a sans doute retiré de l\'équipe.';
+async function lireTableauEquipe(id, motif = MOTIF_REJOINDRE) {
   try {
     const reglages = await drive.lireReglagesTableau(id);
     const membres = R.lignesVersMembres(await drive.lirePlage(id, drive.ONGLET_EQUIPE, 'A2:D'));
     const valeur = (cle) => { const l = reglages.find((r) => r[0] === cle); return l ? String(l[1] || '').trim() : ''; };
     return { reglages, membres, valeur };
   } catch (e) {
-    if ([400, 403, 404].includes(e.statut)) throw new R.ErreurEquipe('Ce carnet d\'équipe n\'est pas accessible avec votre compte Google (partage retiré, tableau supprimé ou ce n\'est pas un carnet d\'équipe).');
+    if ([400, 403, 404].includes(e.statut)) throw new R.ErreurEquipe(motif);
     throw e;
   }
 }
@@ -99,9 +101,9 @@ async function lireTableauEquipe(id) {
 // Commercial : toujours membre d'une équipe valable ? Sinon ErreurEquipe. Partage aussi son dossier de photos avec le
 // responsable (lecture seule), pour que les liens « Photo » du tableau s'ouvrent chez lui.
 async function verifierCommercial() {
-  const t = await lireTableauEquipe(espace.idTableau());
+  const t = await lireTableauEquipe(espace.idTableau(), MOTIF_RETIRE);
   const motif = R.verifierAdhesion(t.reglages, t.membres, compteConnu(), empreinteEquipeValable);
-  if (motif) throw new R.ErreurEquipe(motif);
+  if (motif) throw new R.ErreurEquipe(R.membreDe(t.membres, compteConnu()) ? motif : MOTIF_RETIRE);
   await base.ecrireReglage('_equipe', t.membres);
   const responsable = t.valeur(R.CLE_RESPONSABLE);
   await base.ecrireReglage(R.CLE_RESPONSABLE, responsable);
