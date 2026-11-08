@@ -22,6 +22,10 @@
 
   <script type="module">
     import { extraireChamps, nettoyer } from '../js/tri.js';
+    import { remplirModele, valeursModele } from '../js/relances.js';
+
+    // Première ligne du message J+2 par défaut (js/espace.js)
+    const MODELE_J2 = 'Bonjour {prenom},\n\nMerci pour votre passage';
 
     // Les six cas du cahier des charges (§ 7), résultats identiques au prototype Apps Script.
     const CAS = [
@@ -62,7 +66,12 @@
         attendu: { nom: 'Jérôme Durand' } },
       { nom: 'Nom de famille en tête, sans capitales',
         carte: 'Durand Jérôme\nj.durand@atelier.fr', note: '',
-        attendu: { nom: 'Jérôme Durand' } }
+        attendu: { nom: 'Jérôme Durand' } },
+      // Prénom puis nom, majuscules initiales : nom gardé tel quel, relance « Bonjour M. Durand, ».
+      { nom: 'Prénom puis nom, majuscules initiales',
+        carte: 'Jérôme Durand\nDirecteur\njdurand@durand-menuiserie.fr', note: '',
+        attendu: { nom: 'Jérôme Durand' },
+        debutRelance: 'Bonjour M. Durand,' }
     ];
 
     // Ajoute une ligne au tableau des résultats.
@@ -85,6 +94,12 @@
       for (const champ of Object.keys(cas.attendu)) {
         total++;
         if (ligne(cas.nom, champ, cas.attendu[champ], obtenu[champ])) verts++;
+      }
+      // Début de la relance J+2 par défaut, rempli avec le nom trouvé
+      if (cas.debutRelance) {
+        total++;
+        const corps = remplirModele(MODELE_J2, valeursModele({ nom: obtenu.nom }, {}));
+        if (ligne(cas.nom, 'début de relance', cas.debutRelance, corps.split('\n')[0])) verts++;
       }
     }
     total++;

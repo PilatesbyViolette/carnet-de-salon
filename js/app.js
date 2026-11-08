@@ -44,7 +44,8 @@ async function apresConnexion() {
     await espace.rafraichirDepuisTableau(); // « Essai commencé le » du tableau fait foi (essai déjà consommé ?)
     await chargerActivation(); // recopie aussi le code et l'essai dans les Réglages (vidés à la déconnexion)
     if (essaiTermine()) afficher('essai');
-    else if (!(await espace.reglage('Votre nom'))) ouvrirReglagesPremiereFois();
+    // Premier lancement : nom du salon encore vide (« Votre nom » est caché, réservé à la future version Équipe)
+    else if (!(await espace.reglage('Nom du salon'))) ouvrirReglagesPremiereFois();
     else afficher(doitMontrerAide() ? 'aide' : 'accueil');
     synchroniser();
   } catch (e) {
