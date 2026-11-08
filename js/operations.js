@@ -56,6 +56,7 @@ export async function envoyerOperation(op, api) {
     if (!numero) return; // ligne disparue du tableau : rien à modifier
     const c = op.champs;
     await api.ecrirePlage('D' + numero + ':I' + numero, [COLONNES_D_A_I.map((k) => c[k] || '')]);
+    if (c.statut) await api.ecrirePlage('K' + numero, [[c.statut]]); // « À vérifier » passé en « Vérifié »
     if (Object.prototype.hasOwnProperty.call(c, 'texte')) await api.ecrirePlage('N' + numero, [[c.texte || '']]);
     return;
   }

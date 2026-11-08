@@ -78,6 +78,25 @@ export async function lancerTests() {
     verifier('Modification rejouée : aucun doublon', 4, t.lignes.length);
   }
 
+  // Contact « À vérifier » enregistré depuis sa fiche : colonne Statut passée en « Vérifié », relances intactes
+  {
+    const t = fauxTableau();
+    t.lignes[3][10] = 'À vérifier';
+    const op = { type: 'modifier', id: 'c3', champs: Object.assign({}, CHAMPS_B2, { nom: 'Paul Martin', statut: "Vérifié dans l'appli" }) };
+    await envoyer(t, ajouterOperation([], op));
+    verifier('À vérifier enregistré : statut Vérifié', "Vérifié dans l'appli", t.lignes[3][10]);
+    verifier('À vérifier enregistré : relances intactes', ['', ''], t.lignes[3].slice(11, 13));
+    verifier('À vérifier enregistré : retiré de la liste À vérifier', [],
+      appliquerOperations([{ id: 'c3', statut: 'À vérifier' }], ajouterOperation([], op)).filter((c) => c.statut === 'À vérifier'));
+  }
+
+  // Sans statut dans la modification (contact déjà vérifié) : colonne Statut intacte
+  {
+    const t = fauxTableau();
+    await envoyer(t, ajouterOperation([], { type: 'modifier', id: 'b2', champs: CHAMPS_B2 }));
+    verifier('Contact déjà vérifié : statut intact', 'Vérifié', t.lignes[2][10]);
+  }
+
   // Deux modifications du même contact avant l'envoi : fusionnées en une seule
   {
     let file = ajouterOperation([], { type: 'modifier', id: 'b2', champs: { nom: 'A', note: 'x' } });

@@ -204,7 +204,9 @@ async function noterOperation(op) {
 
 // Modifie un contact depuis sa fiche (local d'abord). Pas encore écrit dans le tableau : la file écrira la ligne avec
 // ces valeurs. Déjà écrit : la ligne sera mise à jour (retrouvée par son Id), sans toucher aux colonnes de relance.
-export async function modifierContact(contact, champs) {
+export async function modifierContact(contact, champsSaisis) {
+  // Contact « À vérifier » enregistré depuis sa fiche : relu par l'exposant, il passe en « Vérifié »
+  const champs = contact.statut === base.A_VERIFIER ? Object.assign({}, champsSaisis, { statut: base.VERIFIE }) : champsSaisis;
   const local = await base.majContact(contact.id, (c) => {
     const valeurs = Object.assign({}, champs);
     if (c.texte == null && !valeurs.texte) delete valeurs.texte; // lecture de la carte encore attendue
