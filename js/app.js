@@ -1,4 +1,4 @@
-// Démarrage de l'appli : activation, écrans, connexion, file d'attente, service worker et bandeaux.
+// Démarrage de l'appli : activation, invitation d'équipe, écrans, connexion, file d'attente, service worker et bandeaux.
 
 import { afficher, enregistrerEcran, montrerErreur, fermerErreur, message } from './interface.js';
 import * as base from './base.js';
@@ -13,14 +13,22 @@ import { initReglages, ouvrirReglagesPremiereFois } from './reglages.js';
 import { initAide, doitMontrerAide } from './aide.js';
 import { initRelances } from './relances.js';
 import { initContacts } from './contacts.js';
-import { initActivation, chargerActivation, estActive, essaiTermine } from './activation.js';
+import { initActivation, chargerActivation, estActive, essaiTermine, roleEquipe, quitterEquipe } from './activation.js';
+import { initEquipe, chargerContexteEquipe } from './equipe.js';
+import { initRejoindre, capterInvitation } from './rejoindre.js';
+import { ROLE_COMMERCIAL, ErreurEquipe } from './equipe-regles.js';
+import { ENV } from './environnement.js';
+import { ecrireLocal } from './stockage.js';
 
-// Lien d'achat Stripe, sans code promo prérempli : le client saisit lui-même son code sur la page Stripe.
+// Lien d'achat Stripe Solo, sans code promo prérempli : le client saisit lui-même son code sur la page Stripe.
 const LIEN_ACHAT = 'https://buy.stripe.com/28E5kCdjp5bC87f20Oc3m00';
+// Lien d'achat Équipe : provisoire (page produit), à remplacer par le lien Stripe Équipe.
+const LIEN_ACHAT_EQUIPE = 'https://optimisons.ai/carnet-de-salon/';
 
-// Met le lien d'achat sur tous les liens « Acheter ».
+// Met les liens d'achat sur tous les liens « Acheter » (Solo et Équipe).
 function brancherLiensAchat() {
   document.querySelectorAll('[data-lien-achat]').forEach((a) => { a.href = LIEN_ACHAT; });
+  document.querySelectorAll('[data-lien-achat-equipe]').forEach((a) => { a.href = LIEN_ACHAT_EQUIPE; });
 }
 
 // Écran à ouvrir une fois l'appli activée : connexion Google, essai terminé ou accueil.
@@ -28,6 +36,12 @@ function ouvrirApresActivation() {
   if (!compteConnu()) { afficher('connexion'); return; }
   afficher(essaiTermine() ? 'essai' : 'accueil');
   synchroniser();
+}
+
+// Écran à ouvrir au démarrage ou après « Plus tard » sur l'écran Rejoindre.
+function ouvrirEcranHabituel() {
+  if (!estActive()) { afficher('activation'); return; }
+  ouvrirApresActivation();
 }
 
 // Bouton « Se connecter avec Google » : la fenêtre Google s'ouvre dans le geste.
@@ -40,20 +54,32 @@ async function apresConnexion() {
   const etat = document.getElementById('connexion-etat');
   etat.hidden = false;
   try {
-    localStorage.setItem('compte', await drive.lireEmailCompte());
+    ecrireLocal('compte', await drive.lireEmailCompte());
     await espace.preparerEspace();
     await espace.rafraichirDepuisTableau(); // « Essai commencé le » du tableau fait foi (essai déjà consommé ?)
     await chargerActivation(); // recopie aussi le code et l'essai dans les Réglages (vidés à la déconnexion)
+    await chargerContexteEquipe();
     if (essaiTermine()) afficher('essai');
-    // Premier lancement : nom du salon encore vide (« Votre nom » est caché, réservé à la future version Équipe)
-    else if (!(await espace.reglage('Nom du salon'))) ouvrirReglagesPremiereFois();
+    // Premier lancement : nom du salon encore vide (un commercial reçoit les réglages de son responsable)
+    else if (roleEquipe() !== ROLE_COMMERCIAL && !(await espace.reglage('Nom du salon'))) ouvrirReglagesPremiereFois();
     else afficher(doitMontrerAide() ? 'aide' : 'accueil');
     synchroniser();
   } catch (e) {
-    montrerErreur('Préparation de votre espace impossible : ' + e.message);
+    if (e instanceof ErreurEquipe) retirerDeLEquipe(e.message);
+    else montrerErreur('Préparation de votre espace impossible : ' + e.message);
   } finally {
     etat.hidden = true;
   }
+}
+
+// Commercial retiré de l'équipe (ou carnet d'équipe disparu) : retour à l'écran d'activation (essai ou code).
+async function retirerDeLEquipe(motif) {
+  if (roleEquipe() !== ROLE_COMMERCIAL) return;
+  await quitterEquipe();
+  await espace.oublierEquipeSurTelephone();
+  await chargerContexteEquipe();
+  afficher('activation');
+  montrerErreur(motif + ' Vous pouvez commencer votre propre essai ou saisir un code.');
 }
 
 // Captures interrompues (appli fermée pendant une saisie) : gardées avec le statut « À vérifier » si une photo existe.
@@ -65,9 +91,9 @@ async function reprendreCapturesInterrompues() {
   }
 }
 
-// Service worker : installation hors ligne et bandeau « Nouvelle version disponible ».
+// Service worker : installation hors ligne et bandeau « Nouvelle version disponible » (pas dans la version de test).
 function enregistrerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
+  if (!ENV.serviceWorker || !('serviceWorker' in navigator)) return;
   const avaitUnControleur = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('/sw.js').then((inscription) => {
     document.addEventListener('visibilitychange', () => { if (!document.hidden) inscription.update().catch(() => {}); });
@@ -79,12 +105,15 @@ function enregistrerServiceWorker() {
 
 // Branche les bandeaux, les erreurs non prévues et les messages de la file.
 function brancherBandeaux() {
+  document.getElementById('bandeau-test').hidden = !ENV.test;
+  document.body.classList.toggle('version-test', ENV.test);
   document.getElementById('bandeau-erreur').addEventListener('click', fermerErreur);
   document.getElementById('bandeau-maj').addEventListener('click', () => location.reload());
   window.addEventListener('error', (e) => montrerErreur('Erreur : ' + e.message));
   window.addEventListener('unhandledrejection', (e) => montrerErreur('Erreur : ' + ((e.reason && e.reason.message) || e.reason)));
   window.addEventListener('carnet:sync', (e) => {
-    if (e.detail.erreur) montrerErreur('Envoi vers Google : ' + e.detail.erreur);
+    if (e.detail.retrait) retirerDeLEquipe(e.detail.retrait).catch((err) => montrerErreur('Équipe : ' + err.message));
+    else if (e.detail.erreur) montrerErreur('Envoi vers Google : ' + e.detail.erreur);
     else if (e.detail.attente) message(MESSAGE_ATTENTE); // 5xx persistant : message bref, sans alarme
   });
 }
@@ -102,14 +131,18 @@ async function demarrer() {
   initNouveau();
   initVerifier();
   initReglages();
+  initEquipe();
+  initRejoindre(ouvrirEcranHabituel);
   initAide();
   document.getElementById('bouton-connexion').addEventListener('click', surConnexion);
   document.querySelectorAll('[data-retour]').forEach((b) => b.addEventListener('click', () => afficher('accueil')));
+  const invitation = capterInvitation();
   await reprendreCapturesInterrompues();
   await chargerActivation();
+  await chargerContexteEquipe();
   demarrerFile();
-  if (!estActive()) { afficher('activation'); return; }
-  ouvrirApresActivation();
+  if (invitation) { afficher('rejoindre'); return; }
+  ouvrirEcranHabituel();
 }
 
 demarrer().catch((e) => montrerErreur('Démarrage : ' + e.message));

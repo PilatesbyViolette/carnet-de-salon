@@ -8,6 +8,8 @@ import * as drive from './drive.js';
 import * as espace from './espace.js';
 import { jetonValide, compteConnu } from './connexion.js';
 import { extraireChamps } from './tri.js';
+import { synchroniserEquipe } from './equipe.js';
+import { ErreurEquipe } from './equipe-regles.js';
 
 const ESSAIS_MAX = 3;
 // Erreurs 5xx de Google (passagères) : nouvelles tentatives silencieuses, espacées.
@@ -72,6 +74,7 @@ export async function synchroniser() {
     if (!navigator.onLine) { annoncer({ horsLigne: true }); return; }
     if (!jetonValide()) { annoncer({ reconnexion: true }); return; }
     await avecReprises(() => espace.preparerEspace());
+    await avecReprises(() => synchroniserEquipe()); // mode Équipe : tableau préparé (responsable), membre vérifié (commercial)
     await avecReprises(() => espace.envoyerReglagesSiBesoin());
     await avecReprises(() => espace.envoyerRelancesSiBesoin());
     await avecReprises(() => espace.envoyerOperationsSiBesoin()); // modifications et suppressions de contacts
@@ -79,7 +82,8 @@ export async function synchroniser() {
     await avecReprises(() => espace.rafraichirDepuisTableau());
     annoncer({ fini: true });
   } catch (e) {
-    if (e instanceof drive.ErreurJeton) annoncer({ reconnexion: true });
+    if (e instanceof ErreurEquipe) annoncer({ retrait: e.message });
+    else if (e instanceof drive.ErreurJeton) annoncer({ reconnexion: true });
     else if (e instanceof drive.ErreurReseau) annoncer({ horsLigne: true });
     else if (erreurServeur(e)) { attenteServeur = true; annoncer({ attente: true }); }
     else annoncer({ erreur: e.message });
@@ -146,7 +150,7 @@ async function etapeEcriture(id) {
   const tableau = espace.idTableau();
   let ids = await drive.lireIds(tableau);
   if (!ids.includes(id)) {
-    await drive.ajouterLigne(tableau, espace.contactVersLigne(c, await espace.prisPar()));
+    await drive.ajouterLigne(tableau, espace.contactVersLigne(c, await espace.prisPar(), compteConnu()));
     ids = await drive.lireIds(tableau);
     if (!ids.includes(id)) throw new Error('Ligne non retrouvée dans le tableau après écriture');
   }

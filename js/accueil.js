@@ -1,7 +1,6 @@
 // Écran Accueil : compteurs du jour et du total, pastilles d'état, envois en erreur, derniers contacts.
 
-import { afficher, enregistrerEcran, el, pluriel, montrerErreur, ecranAffiche } from './interface.js';
-import * as base from './base.js';
+import { afficher, enregistrerEcran, el, pluriel, montrerErreur, ecranAffiche } from './interface.js';import * as base from './base.js';
 import * as espace from './espace.js';
 import { synchroniser, reessayer, dernierEtat } from './file.js';
 import { jetonValide, demanderJeton, jetonDansLeGeste, compteConnu } from './connexion.js';
@@ -9,6 +8,8 @@ import { jourDuJour, dateCourte } from './dates.js';
 import { contactsARelancer } from './relances.js';
 import { finEssai, essaiTermine } from './activation.js';
 import { nomAffiche, elementContact } from './contacts.js';
+import { contexteEquipe } from './equipe.js';
+import { compteursParMembre, estAMoi, ROLE_RESPONSABLE, ROLE_COMMERCIAL } from './equipe-regles.js';
 
 // Écrit un texte dans l'élément d'identifiant donné.
 function ecrire(id, texte) {
@@ -50,11 +51,28 @@ function pastilleEssai() {
 }
 
 // Rafraîchit tout l'accueil à partir de la vue locale (tableau + contacts pas encore écrits).
+// Compteurs par commercial (responsable) : prénom, contacts du jour, total.
+function afficherCompteursEquipe(tous, jour) {
+  const ctx = contexteEquipe();
+  const liste = document.getElementById('compteurs-equipe');
+  liste.hidden = ctx.role !== ROLE_RESPONSABLE;
+  if (liste.hidden) return;
+  liste.replaceChildren(...compteursParMembre(tous, jour, ctx).map((m) =>
+    el('li', { class: 'compteur-membre' },
+      el('span', { class: 'compteur-membre__nom' }, m.prenom),
+      el('span', { class: 'compteur-membre__chiffres' }, m.jour + ' aujourd\'hui · ' + m.total + ' au total'))));
+}
+
 export async function rafraichirAccueil() {
-  const contacts = await espace.vueContacts();
+  const tous = await espace.vueContacts();
+  const ctx = contexteEquipe();
+  // Commercial : ses contacts ; responsable : toute l'équipe (avec le détail par commercial)
+  const contacts = ctx.role === ROLE_COMMERCIAL ? tous.filter((c) => estAMoi(c, ctx)) : tous;
   const jour = jourDuJour();
   ecrire('chiffre-jour', contacts.filter((c) => String(c.creeLe).startsWith(jour)).length);
   ecrire('chiffre-total', contacts.length);
+  ecrire('libelle-total', ctx.role === ROLE_RESPONSABLE ? 'au total, toute l\'équipe' : 'au total');
+  afficherCompteursEquipe(tous, jour);
 
   const locaux = (await base.tousLesContacts()).filter((c) => c.statut);
   const enAttente = locaux.filter((c) => c.etat !== 'ecrit' && c.etat !== 'erreur').length;
@@ -68,7 +86,8 @@ export async function rafraichirAccueil() {
   listeErreurs.replaceChildren(...enErreur.map(elementErreur));
   listeErreurs.hidden = enErreur.length === 0;
 
-  const aVerifier = contacts.filter((c) => c.statut === base.A_VERIFIER && c.etat === 'ecrit').length;
+  const miensAVerifier = ctx.role === ROLE_RESPONSABLE ? tous.filter((c) => estAMoi(c, ctx)) : contacts;
+  const aVerifier = miensAVerifier.filter((c) => c.statut === base.A_VERIFIER && c.etat === 'ecrit').length;
   ecrire('compte-a-verifier', aVerifier ? String(aVerifier) : '');
   const aRelancer = (await contactsARelancer()).length;
   ecrire('compte-a-relancer', aRelancer ? String(aRelancer) : '');
@@ -94,5 +113,5 @@ export function initAccueil() {
   document.getElementById('bouton-a-relancer').addEventListener('click', () => afficher('relancer'));
   document.getElementById('bouton-reglages').addEventListener('click', () => afficher('reglages'));
   const siAccueil = () => { if (ecranAffiche() === 'accueil') rafraichirAccueil(); };
-  ['carnet:sync', 'carnet:contact', 'carnet:contacts', 'carnet:jeton', 'carnet:activation', 'online', 'offline'].forEach((evt) => window.addEventListener(evt, siAccueil));
+  ['carnet:sync', 'carnet:contact', 'carnet:contacts', 'carnet:jeton', 'carnet:activation', 'carnet:equipe', 'online', 'offline'].forEach((evt) => window.addEventListener(evt, siAccueil));
 }

@@ -91,6 +91,11 @@ export function ecrireReglage(cle, valeur) {
   return operation('reglages', 'readwrite', (m) => m.put({ cle, valeur }));
 }
 
+// Supprime un réglage local.
+export function supprimerReglage(cle) {
+  return operation('reglages', 'readwrite', (m) => m.delete(cle));
+}
+
 // Renvoie tous les réglages locaux sous forme d'objet { cle: valeur }.
 export async function tousLesReglages() {
   const lignes = await operation('reglages', 'readonly', (m) => m.getAll());

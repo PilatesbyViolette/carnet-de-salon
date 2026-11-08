@@ -7,7 +7,10 @@ export const NOM_DOSSIER = 'Carnet de salon · Photos des cartes';
 export const TYPE_TABLEAU = 'application/vnd.google-apps.spreadsheet';
 export const TYPE_DOSSIER = 'application/vnd.google-apps.folder';
 export const ENTETES = ['Id', 'Date', 'Pris par', 'Nom', 'Entreprise', 'E-mail', 'Téléphone', 'Site',
-  'Note', 'Photo', 'Statut', 'Relance J+2', 'Relance J+7', 'Texte lu sur la carte'];
+  'Note', 'Photo', 'Statut', 'Relance J+2', 'Relance J+7', 'Texte lu sur la carte', 'Compte'];
+// Colonne O « Compte » : e-mail Google de la personne qui a pris le contact (qui peut le modifier en mode Équipe).
+export const ONGLET_EQUIPE = 'Équipe';
+export const ENTETES_EQUIPE = ['E-mail', 'Prénom', 'Rôle', 'Ajouté le'];
 
 const DRIVE = 'https://www.googleapis.com/drive/v3';
 const ENVOI = 'https://www.googleapis.com/upload/drive/v3';
@@ -162,15 +165,15 @@ export async function lireIds(idTableau) {
   return ((await reponse.json()).values || []).map((l) => l[0] || '');
 }
 
-// Ajoute une ligne à l'onglet Contacts, en valeurs brutes (aucune formule interprétée).
+// Ajoute une ligne à l'onglet Contacts (colonnes A à O), en valeurs brutes (aucune formule interprétée).
 export async function ajouterLigne(idTableau, valeurs) {
-  await envoyerJson(SHEETS + '/' + idTableau + '/values/' + plage('Contacts', 'A:N') +
+  await envoyerJson(SHEETS + '/' + idTableau + '/values/' + plage('Contacts', 'A:O') +
     ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST', { values: [valeurs] });
 }
 
 // Lit toutes les lignes de contacts (sans l'en-tête).
 export async function lireLignes(idTableau) {
-  const reponse = await appelGoogle(SHEETS + '/' + idTableau + '/values/' + plage('Contacts', 'A2:N'));
+  const reponse = await appelGoogle(SHEETS + '/' + idTableau + '/values/' + plage('Contacts', 'A2:O'));
   return (await reponse.json()).values || [];
 }
 
@@ -194,12 +197,13 @@ export async function supprimerLigne(idTableau, idOngletNum, numero) {
   });
 }
 
-// Place un fichier dans la corbeille Drive ; un fichier déjà disparu (404) n'est pas une erreur.
+// Place un fichier dans la corbeille Drive ; un fichier déjà disparu (404) n'est pas une erreur, ni un fichier
+// qui n'appartient pas au compte (403 : photo d'un commercial supprimée par le responsable, elle reste chez lui).
 export async function mettreALaCorbeille(id) {
   try {
     await envoyerJson(DRIVE + '/files/' + id + '?fields=id', 'PATCH', { trashed: true });
   } catch (e) {
-    if (e.statut !== 404) throw e;
+    if (e.statut !== 404 && e.statut !== 403) throw e;
   }
 }
 
@@ -212,4 +216,49 @@ export async function lirePhoto(id) {
 export async function lireReglagesTableau(idTableau) {
   const reponse = await appelGoogle(SHEETS + '/' + idTableau + '/values/' + plage('Réglages', 'A2:B'));
   return (await reponse.json()).values || [];
+}
+
+// ---------- Mode Équipe : onglets, partage ----------
+
+// Titres des onglets du tableau.
+export async function titresOnglets(idTableau) {
+  const reponse = await appelGoogle(SHEETS + '/' + idTableau + '?fields=sheets.properties(sheetId,title)');
+  return ((await reponse.json()).sheets || []).map((s) => s.properties.title);
+}
+
+// Lit une plage d'un onglet (lignes de valeurs, vide si rien).
+export async function lirePlage(idTableau, onglet, cellules) {
+  const reponse = await appelGoogle(SHEETS + '/' + idTableau + '/values/' + plage(onglet, cellules));
+  return (await reponse.json()).values || [];
+}
+
+// Ajoute un onglet (en-tête en gras, première ligne figée) avec ses premières lignes.
+export async function ajouterOnglet(idTableau, titre, lignes) {
+  await envoyerJson(SHEETS + '/' + idTableau + ':batchUpdate', 'POST', {
+    requests: [{ addSheet: { properties: { title: titre, gridProperties: { frozenRowCount: 1 } } } }]
+  });
+  await ecrirePlage(idTableau, titre, 'A1', lignes);
+}
+
+// Ajoute une ligne en bas d'un onglet, en valeurs brutes.
+export async function ajouterLigneOnglet(idTableau, onglet, valeurs) {
+  await envoyerJson(SHEETS + '/' + idTableau + '/values/' + plage(onglet, 'A:Z') +
+    ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', 'POST', { values: [valeurs] });
+}
+
+// Partage un fichier avec un compte Google, sans e-mail de Google (l'invitation part de la messagerie du responsable).
+export async function partager(idFichier, email, role) {
+  await envoyerJson(DRIVE + '/files/' + idFichier + '/permissions?sendNotificationEmail=false&fields=id', 'POST',
+    { role, type: 'user', emailAddress: email });
+}
+
+// Retire le partage d'un fichier pour un compte Google (rien à faire s'il n'était pas partagé).
+export async function retirerPartage(idFichier, email) {
+  const reponse = await appelGoogle(DRIVE + '/files/' + idFichier + '/permissions?fields=permissions(id,emailAddress,role)');
+  const cible = String(email).trim().toLowerCase();
+  for (const p of (await reponse.json()).permissions || []) {
+    if (p.role !== 'owner' && String(p.emailAddress || '').toLowerCase() === cible) {
+      await appelGoogle(DRIVE + '/files/' + idFichier + '/permissions/' + p.id, { method: 'DELETE' });
+    }
+  }
 }

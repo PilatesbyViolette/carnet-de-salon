@@ -101,7 +101,12 @@ async function etatCode(memo) {
   }
   await recopierCode(memo.code, code.type);
   const fin = code.type === 'essai' ? Date.parse(debutCodeTest()) + code.dureeHeures * HEURE_MS : null;
-  return { code: memo.code, type: code.type, libelle: code.libelle, fin, role: code.type === 'equipe' ? 'responsable' : '' };
+  return { code: memo.code, type: code.type, libelle: code.libelle, fin, role: code.type === 'equipe' ? 'responsable' : '', empreinte: memo.empreinte };
+}
+
+// Empreinte du code Équipe du responsable (clé Réglages « Code équipe »), ou ''.
+export function empreinteCodeEquipe() {
+  return etat && etat.role === 'responsable' ? etat.empreinte : '';
 }
 
 // Prévient l'interface à la fin de l'essai (pastille de l'accueil, capture bloquée).

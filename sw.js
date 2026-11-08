@@ -1,8 +1,8 @@
 // Service worker minimal : garde en cache les fichiers de l'appli pour qu'elle s'ouvre sans réseau.
-// « Cache d'abord » pour la liste ci-dessous uniquement ; tout le reste (Google, GIS, test/) passe par le réseau.
+// « Cache d'abord » pour la liste ci-dessous uniquement ; tout le reste (Google, GIS, Picker, test/, equipe-test/) passe par le réseau.
 // À CHAQUE MODIFICATION D'UN FICHIER DE L'APPLI : changer VERSION, sinon les téléphones garderont l'ancienne version.
 
-const VERSION = 'carnet-2026-11-09-2';
+const VERSION = 'carnet-2026-11-09-equipe-1';
 const FICHIERS = [
   '/',
   '/index.html',
@@ -29,6 +29,12 @@ const FICHIERS = [
   '/js/tri.js',
   '/js/prenoms.js',
   '/js/dates.js',
+  '/js/environnement.js',
+  '/js/stockage.js',
+  '/js/equipe.js',
+  '/js/equipe-regles.js',
+  '/js/rejoindre.js',
+  '/js/picker.js',
   '/polices/archivo-var-latin.woff2',
   '/polices/plex-mono-400-latin.woff2',
   '/polices/plex-mono-500-latin.woff2',

@@ -6,7 +6,9 @@ import * as espace from './espace.js';
 import { synchroniser } from './file.js';
 import { jetonDansLeGeste, jetonValide, demanderJeton, deconnecter, compteConnu } from './connexion.js';
 import { doitMontrerAide } from './aide.js';
-import { descriptionActivation } from './activation.js';
+import { descriptionActivation, roleEquipe } from './activation.js';
+import { chargerContexteEquipe } from './equipe.js';
+import { prenomDe, ROLE_RESPONSABLE, ROLE_COMMERCIAL } from './equipe-regles.js';
 
 // Champ de l'écran -> clé de l'onglet Réglages.
 const CHAMPS = {
@@ -31,9 +33,31 @@ export function ouvrirReglagesPremiereFois() {
   afficher('reglages');
 }
 
+// Champs réglés pour toute l'équipe par le responsable : en lecture seule chez un commercial.
+const CHAMPS_EQUIPE = ['reg-entreprise', 'reg-salon', 'reg-delai2', 'reg-delai7', 'reg-objet2', 'reg-message2', 'reg-objet7', 'reg-message7'];
+
+// Adapte l'écran au mode : Solo (comme avant), responsable (prénom, « Mon équipe »), commercial (lecture seule).
+async function adapterAuMode() {
+  const ctx = await chargerContexteEquipe();
+  const commercial = ctx.role === ROLE_COMMERCIAL;
+  const responsable = ctx.role === ROLE_RESPONSABLE;
+  document.getElementById('reg-nom-bloc').hidden = !responsable;
+  document.getElementById('bouton-mon-equipe').hidden = !responsable;
+  document.getElementById('reg-note-commercial').hidden = !commercial;
+  CHAMPS_EQUIPE.forEach((id) => { document.getElementById(id).readOnly = commercial; });
+  const prenom = document.getElementById('reg-prenom-equipe');
+  prenom.hidden = !commercial;
+  document.getElementById('reg-prenom-equipe-titre').hidden = !commercial;
+  if (commercial) {
+    prenom.textContent = prenomDe(ctx.membres, ctx.moi) || '(donné par le responsable)';
+    document.getElementById('reg-signature').value = await base.lireReglage('_maSignature', '');
+  }
+}
+
 // Remplit l'écran avec les valeurs locales.
 async function remplir() {
   for (const [id, cle] of Object.entries(CHAMPS)) document.getElementById(id).value = await espace.reglage(cle);
+  await adapterAuMode();
   document.getElementById('reg-compte').textContent = compteConnu() || 'non connecté';
   document.getElementById('reg-code').textContent = descriptionActivation();
   const lien = document.getElementById('reg-lien-tableau');
@@ -62,6 +86,13 @@ function lireValeurs() {
 // Enregistre : jeton dans le geste si besoin, écriture locale, envoi par la file.
 function surEnregistrer(evenement) {
   evenement.preventDefault();
+  // Commercial : seule sa signature est à lui, gardée sur son téléphone (les autres réglages sont ceux de l'équipe)
+  if (roleEquipe() === ROLE_COMMERCIAL) {
+    base.ecrireReglage('_maSignature', document.getElementById('reg-signature').value.trim())
+      .then(() => { message('Signature enregistrée'); if (premiereFois) { premiereFois = false; afficher(doitMontrerAide() ? 'aide' : 'accueil'); } })
+      .catch((e) => montrerErreur('Signature non enregistrée : ' + e.message));
+    return;
+  }
   let valeurs;
   try { valeurs = lireValeurs(); } catch (e) { montrerErreur(e.message); return; }
   const jeton = jetonDansLeGeste().catch((e) => montrerErreur(e.message));
