@@ -586,6 +586,21 @@ try {
   await solo.page.waitForTimeout(300);
   verifier('Solo : accueil sans le contact supprimé', !(await textes(solo.page, '#liste-derniers .contact__nom')).includes('Luc Solo') && (await solo.page.textContent('#chiffre-total')) === '0');
 
+  // Synchroniser maintenant : retour dans le bouton (Synchronisation… puis Synchronisé), pas de bulle en plus
+  await solo.page.click('#bouton-reglages'); await attendreEcran(solo.page, 'reglages');
+  await solo.page.evaluate(() => {
+    window.__libellesSynchro = [];
+    const b = document.getElementById('bouton-synchroniser');
+    new MutationObserver(() => window.__libellesSynchro.push(b.textContent + (b.disabled ? ' (désactivé)' : ''))).observe(b, { childList: true, characterData: true, subtree: true, attributes: true });
+  });
+  await solo.page.click('#bouton-synchroniser');
+  const synchronise = await solo.page.waitForFunction(() => document.getElementById('bouton-synchroniser').textContent === 'Synchronisé', null, { timeout: 8000 }).then(() => true, () => false);
+  const libelles = await solo.page.evaluate(() => window.__libellesSynchro.join(' | '));
+  verifier('Synchroniser maintenant : « Synchronisation… » (désactivé) puis « Synchronisé »', synchronise && libelles.includes('Synchronisation… (désactivé)'), libelles);
+  verifier('Synchroniser maintenant : pas de bulle « Synchronisation lancée »', !(await solo.page.textContent('#message')).includes('Synchronisation lancée'));
+  verifier('Synchroniser maintenant : libellé remis après quelques secondes', await solo.page.waitForFunction(() => { const b = document.getElementById('bouton-synchroniser'); return b.textContent === 'Synchroniser maintenant' && !b.disabled; }, null, { timeout: 6000 }).then(() => true, () => false));
+  await solo.page.click('[data-retour]:visible'); await attendreEcran(solo.page, 'accueil');
+
   // ===== 9 bis. Essai en cours → Solo (écran Essai) → Équipe (Réglages), sans réinstaller =====
   const ess = await personne('essai@exemple.com', 'essai');
   await ess.page.goto(APPLI);

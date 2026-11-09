@@ -145,10 +145,50 @@ function surEnregistrer(evenement) {
   }).catch((e) => montrerErreur('Réglages non enregistrés : ' + e.message));
 }
 
-// « Synchroniser maintenant » : nouveau jeton dans le geste si besoin, puis passage de la file.
+// Libellé et état du bouton « Synchroniser maintenant » (le retour se lit dans le bouton, sans bulle de message).
+const LIBELLE_SYNCHRO = 'Synchroniser maintenant';
+const DUREE_SYNCHRONISE_MS = 2500;
+let toucherSynchro = 0; // dernier toucher : un ancien minuteur ne remet pas le libellé pendant un nouveau passage
+function etatBoutonSynchro(texte, occupe) {
+  const bouton = document.getElementById('bouton-synchroniser');
+  bouton.textContent = texte;
+  bouton.disabled = occupe;
+}
+
+// Lance un passage de la file et attend son issue (fini, erreur, hors connexion, reconnexion, attente du serveur).
+function synchroniserEtAttendre() {
+  return new Promise((ok) => {
+    const fin = (e) => {
+      if (e.detail.enCours) return;
+      window.removeEventListener('carnet:sync', fin);
+      clearTimeout(securite);
+      ok(e.detail);
+    };
+    const securite = setTimeout(() => { window.removeEventListener('carnet:sync', fin); ok({}); }, 120000);
+    window.addEventListener('carnet:sync', fin);
+    synchroniser();
+  });
+}
+
+// « Synchroniser maintenant » : nouveau jeton dans le geste si besoin, « Synchronisation… » pendant le passage,
+// puis « Synchronisé » quelques secondes. Les erreurs passent par le bandeau habituel (montrerErreur).
 function surSynchroniser() {
+  const numero = ++toucherSynchro;
+  if (!compteConnu()) { montrerErreur('Connectez-vous à Google pour synchroniser.'); return; }
   const jeton = jetonValide() ? Promise.resolve() : demanderJeton(false);
-  jeton.then(() => { message('Synchronisation lancée'); return synchroniser(); }).catch((e) => montrerErreur(e.message));
+  etatBoutonSynchro('Synchronisation…', true);
+  jeton.then(synchroniserEtAttendre).then((issue) => {
+    if (numero !== toucherSynchro) return;
+    // Erreur Google, retrait de l'équipe, attente du serveur : déjà annoncés par js/app.js
+    if (issue.horsLigne) montrerErreur('Hors connexion : vos contacts restent sur le téléphone. Synchronisez une fois le réseau revenu.');
+    else if (issue.reconnexion) montrerErreur('Reconnexion à Google nécessaire : touchez à nouveau « ' + LIBELLE_SYNCHRO + ' ».');
+    if (!issue.fini) { etatBoutonSynchro(LIBELLE_SYNCHRO, false); return; }
+    etatBoutonSynchro('Synchronisé', false);
+    setTimeout(() => { if (numero === toucherSynchro) etatBoutonSynchro(LIBELLE_SYNCHRO, false); }, DUREE_SYNCHRONISE_MS);
+  }).catch((e) => {
+    if (numero === toucherSynchro) etatBoutonSynchro(LIBELLE_SYNCHRO, false);
+    montrerErreur(e.message);
+  });
 }
 
 // Déconnexion : refusée s'il reste des contacts ou des relances à envoyer ; second tap pour confirmer ; vide le téléphone.

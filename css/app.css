@@ -90,6 +90,7 @@ main { max-width: 560px; margin: 0 auto; padding: 16px; }
   -webkit-tap-highlight-color: transparent;
 }
 .bouton:active { transform: scale(.98); }
+.bouton:disabled { opacity: .7; cursor: default; transform: none; }
 .bouton-principal { background: var(--bleu); color: var(--blanc); }
 .bouton-photo { min-height: 72px; font-size: 19px; }
 .bouton-secondaire { background: var(--blanc); color: var(--encre); border-color: var(--bordure); }
@@ -238,7 +239,7 @@ a.bouton-lien { display: inline-block; }
 
 .message {
   position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 20;
-  max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 999px;
+  width: max-content; max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 999px; text-align: center;
   background: var(--encre); color: var(--blanc); font: 600 15px/1.3 var(--f-texte);
   opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity var(--transition), transform var(--transition);
 }
