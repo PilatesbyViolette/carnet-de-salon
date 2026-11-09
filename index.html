@@ -10,14 +10,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Carnet">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/images/icone-180.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png">
-  <link rel="preload" href="/polices/archivo-var-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="images/icone-180.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32.png">
+  <link rel="preload" href="polices/archivo-var-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
   <!-- Bandeaux globaux -->
+  <p id="bandeau-test" class="bandeau-test" hidden>VERSION DE TEST</p>
   <button id="bandeau-maj" class="bandeau bandeau-maj" type="button" hidden>Nouvelle version disponible, toucher pour recharger</button>
   <div id="bandeau-erreur" class="bandeau bandeau-erreur" role="alert" hidden><span></span><small>Toucher pour fermer</small></div>
 
@@ -25,16 +26,21 @@
     <!-- Activation (avant tout accès, étape 6) : essai gratuit sans code, ou code d'achat ou de démonstration -->
     <section id="ecran-activation" class="ecran" hidden>
       <div class="connexion">
-        <p class="logo"><img src="/images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
+        <p class="logo"><img src="images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
         <h1 class="titre-connexion">Essayez-le gratuitement pendant 24 heures<span class="point">.</span></h1>
         <p class="texte-doux">Sans code et sans carte bancaire.</p>
         <button id="bouton-essai-gratuit" class="bouton bouton-principal" type="button">Commencer mon essai gratuit de 24 h</button>
         <form id="formulaire-activation" class="formulaire separe" novalidate autocomplete="off">
-          <label class="champ">J'ai un code<span class="aide-champ">achat ou démonstration</span><input id="champ-code" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX"></label>
+          <label class="champ">J'ai un code<span class="aide-champ">Solo, Équipe ou démonstration</span><input id="champ-code" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX ou CDE-XXXX-XXXX"></label>
           <p id="activation-erreur" class="erreur-champ" role="alert" hidden></p>
           <button class="bouton bouton-secondaire" type="submit">Activer mon code</button>
         </form>
-        <a class="bouton-lien" data-lien-achat href="#" target="_blank" rel="noopener">Pas encore de code ? Acheter</a>
+        <p class="sur-titre">Pas encore de code ?</p>
+        <div class="offres">
+          <a class="offre offre--equipe" data-lien-achat-equipe href="#" target="_blank" rel="noopener"><span class="offre__pastille">Recommandé</span><strong>Équipe · 990 €</strong><span>utilisateurs illimités</span></a>
+          <a class="offre" data-lien-achat href="#" target="_blank" rel="noopener"><strong>Solo · 690 €</strong><span>1 utilisateur</span></a>
+        </div>
+        <p class="texte-doux petit">Vous avez reçu une invitation de votre responsable ? Ouvrez le lien de son e-mail sur ce téléphone : pas de code à saisir.</p>
       </div>
     </section>
 
@@ -45,18 +51,41 @@
       </header>
       <h1 class="titre-connexion">Votre essai est terminé<span class="point">.</span></h1>
       <p class="texte-doux">Vos contacts restent consultables et vous pouvez toujours les relancer. Pour capturer de nouveaux contacts, achetez votre code.</p>
-      <a class="bouton bouton-corail" data-lien-achat href="#" target="_blank" rel="noopener">Acheter</a>
+      <div class="offres">
+        <a class="offre offre--equipe" data-lien-achat-equipe href="#" target="_blank" rel="noopener"><span class="offre__pastille">Recommandé</span><strong>Équipe · 990 €</strong><span>utilisateurs illimités</span></a>
+        <a class="offre" data-lien-achat href="#" target="_blank" rel="noopener"><strong>Solo · 690 €</strong><span>1 utilisateur</span></a>
+      </div>
       <form id="formulaire-code-essai" class="formulaire" novalidate autocomplete="off">
-        <label class="champ">J'ai déjà un code<input id="champ-code-essai" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX"></label>
+        <label class="champ">J'ai déjà un code<input id="champ-code-essai" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX ou CDE-XXXX-XXXX"></label>
         <p id="essai-erreur" class="erreur-champ" role="alert" hidden></p>
         <button class="bouton bouton-secondaire" type="submit">Activer ce code</button>
       </form>
     </section>
 
+    <!-- Rejoindre une équipe (lien d'invitation ?rejoindre=idDuTableau) : connexion Google, puis Google Picker -->
+    <section id="ecran-rejoindre" class="ecran" hidden>
+      <div class="connexion">
+        <p class="logo"><img src="images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
+        <h1 class="titre-connexion">Rejoindre le carnet de <span id="rejoindre-titre-entreprise">votre équipe</span><span class="point">.</span></h1>
+        <p class="texte-doux">Vos contacts iront directement dans le tableau de l'équipe. Pas de code à saisir.</p>
+        <ol class="etapes">
+          <li>Connectez-vous avec le compte Google que votre responsable a invité.</li>
+          <li>Touchez « Choisir le carnet partagé », sélectionnez <strong>Carnet de salon · Mes contacts</strong>, puis <strong>Sélectionner</strong>.</li>
+        </ol>
+        <p id="rejoindre-compte" class="pastille" hidden></p>
+        <button id="bouton-rejoindre-connexion" class="bouton bouton-principal" type="button">Se connecter avec Google</button>
+        <button id="bouton-choisir-carnet" class="bouton bouton-principal" type="button" hidden>Choisir le carnet partagé</button>
+        <p id="rejoindre-aide-picker" class="texte-doux petit" hidden>La fenêtre Google reste blanche ? Ouvrez le lien dans votre navigateur habituel, pas en navigation privée, et autorisez les cookies si le navigateur le demande.</p>
+        <p id="rejoindre-etat" class="sur-titre" hidden>Vérification de votre accès au carnet</p>
+        <button id="bouton-rejoindre-annuler" class="bouton-lien" type="button">Plus tard</button>
+        <p class="texte-doux petit">L'appli ne voit que le tableau que vous choisissez et les fichiers qu'elle crée dans votre Google Drive.</p>
+      </div>
+    </section>
+
     <!-- Connexion (première ouverture) -->
     <section id="ecran-connexion" class="ecran" hidden>
       <div class="connexion">
-        <p class="logo"><img src="/images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
+        <p class="logo"><img src="images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
         <h1 class="titre-connexion">Ne perdez plus un seul contact de salon<span class="point">.</span></h1>
         <p class="texte-doux">Photographiez la carte, dictez une note, enregistrez. Après le salon, l'appli vous dit qui relancer, avec le message prêt.</p>
         <button id="bouton-connexion" class="bouton bouton-principal" type="button">Se connecter avec Google</button>
@@ -68,14 +97,15 @@
     <!-- Accueil -->
     <section id="ecran-accueil" class="ecran" hidden>
       <header class="entete">
-        <p class="logo"><img src="/images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
+        <p class="logo"><img src="images/sablier.webp" width="32" height="58" alt="">Carnet de salon</p>
         <button id="bouton-reglages" class="bouton-lien" type="button">Réglages</button>
       </header>
 
       <div class="carte-sombre">
         <div><span id="chiffre-jour" class="chiffre">0</span><span class="sur-titre">contacts aujourd'hui</span></div>
-        <div><span id="chiffre-total" class="chiffre">0</span><span class="sur-titre">au total</span></div>
+        <div><span id="chiffre-total" class="chiffre">0</span><span id="libelle-total" class="sur-titre">au total</span></div>
       </div>
+      <ul id="compteurs-equipe" class="compteurs-equipe" aria-label="Contacts par commercial" hidden></ul>
 
       <div class="pastilles">
         <p id="pastille-attente" class="pastille" hidden><span></span></p>
@@ -121,7 +151,8 @@
         <label class="champ">Téléphone<input id="fiche-tel" type="tel" inputmode="tel"></label>
         <label class="champ">Site<input id="fiche-site" type="text" inputmode="url" autocapitalize="off" spellcheck="false"></label>
         <label class="champ">Texte lu<textarea id="fiche-texte" class="texte-lu-modifiable" rows="6" spellcheck="false"></textarea></label>
-        <button class="bouton bouton-corail" type="submit">Enregistrer</button>
+        <p id="fiche-lecture-seule" class="pastille" hidden><span>Contact pris par un autre membre de l'équipe : seuls lui et le responsable peuvent le modifier.</span></p>
+        <button id="fiche-enregistrer" class="bouton bouton-corail" type="submit">Enregistrer</button>
       </form>
       <button id="fiche-supprimer" class="bouton bouton-discret fiche-supprimer" type="button">Supprimer ce contact</button>
     </section>
@@ -132,6 +163,7 @@
         <button class="bouton-lien" type="button" data-retour>Accueil</button>
         <h1 class="titre-ecran">Tous les contacts</h1>
       </header>
+      <label id="filtre-membre-bloc" class="champ" hidden>Pris par<select id="filtre-membre"></select></label>
       <label class="champ">Rechercher<input id="recherche-contacts" type="search" placeholder="Nom ou entreprise" autocomplete="off" enterkeyhint="search"></label>
       <ul id="liste-tous" class="liste"></ul>
       <p id="aucun-trouve" class="texte-doux" hidden>Aucun contact trouvé.</p>
@@ -194,6 +226,10 @@
         <h1 class="titre-ecran">À relancer</h1>
       </header>
       <p class="texte-doux">Contacts avec e-mail arrivés au délai de relance. « Relancer » ouvre votre messagerie avec le message prêt : relisez-le avant d'envoyer.</p>
+      <div id="filtre-relances" class="bascule" role="group" aria-label="Relances à afficher" hidden>
+        <button class="bascule__choix" type="button" data-portee="moi" aria-pressed="true">Mes contacts</button>
+        <button class="bascule__choix" type="button" data-portee="equipe" aria-pressed="false">Toute l'équipe</button>
+      </div>
       <ul id="liste-relancer" class="liste"></ul>
       <p id="aucun-a-relancer" class="texte-doux">Personne à relancer pour l'instant.</p>
     </section>
@@ -208,8 +244,9 @@
       <form id="formulaire-reglages" class="formulaire" novalidate autocomplete="off">
         <label class="champ">Votre entreprise<input id="reg-entreprise" type="text"></label>
         <label class="champ">Nom du salon<span class="aide-champ">obligatoire</span><input id="reg-salon" type="text" placeholder="MIF Expo"></label>
-        <!-- « Votre nom » (colonne Pris par) masqué : réservé à la future version Équipe -->
-        <label class="champ" hidden>Votre nom<input id="reg-nom" type="text" autocapitalize="words"></label>
+        <p id="reg-note-commercial" class="pastille" hidden><span>Réglages de l'équipe, choisis par votre responsable. Votre signature reste la vôtre.</span></p>
+        <!-- « Votre nom » (clé Réglages) : en mode Équipe, prénom du responsable (colonne Pris par) ; masqué en Solo -->
+        <label id="reg-nom-bloc" class="champ" hidden>Votre prénom<span class="aide-champ">colonne « Pris par »</span><input id="reg-nom" type="text" autocapitalize="words"></label>
         <label class="champ">Votre signature<textarea id="reg-signature" rows="3"></textarea></label>
         <div class="deux-colonnes">
           <label class="champ">Délai J+2 (jours)<input id="reg-delai2" type="number" inputmode="numeric" min="0"></label>
@@ -227,11 +264,36 @@
       <dl class="infos">
         <dt class="sur-titre">Compte Google connecté</dt><dd id="reg-compte"></dd>
         <dt class="sur-titre">Code d'activation</dt><dd id="reg-code"></dd>
+        <dt id="reg-prenom-equipe-titre" class="sur-titre" hidden>Votre prénom dans l'équipe</dt><dd id="reg-prenom-equipe" hidden></dd>
       </dl>
+      <button id="bouton-mon-equipe" class="bouton bouton-principal" type="button" hidden>Mon équipe</button>
       <a id="reg-lien-tableau" class="bouton bouton-secondaire" href="#" target="_blank" rel="noopener">Ouvrir mon tableau</a>
       <button id="bouton-synchroniser" class="bouton bouton-secondaire" type="button">Synchroniser maintenant</button>
       <button id="bouton-aide" class="bouton bouton-secondaire" type="button">Installer l'appli sur le téléphone</button>
       <button id="bouton-deconnexion" class="bouton bouton-discret" type="button">Se déconnecter</button>
+    </section>
+
+    <!-- Mon équipe (responsable) : membres, invitation par lien, retrait -->
+    <section id="ecran-equipe" class="ecran" hidden>
+      <header class="entete">
+        <button class="bouton-lien" type="button" data-retour>Accueil</button>
+        <h1 class="titre-ecran">Mon équipe</h1>
+      </header>
+      <p class="texte-doux">Chaque commercial capture avec son téléphone et son compte Google ; tout arrive dans votre tableau.</p>
+      <ul id="liste-membres" class="liste"></ul>
+      <p id="aucun-membre" class="texte-doux" hidden>L'équipe se prépare à la prochaine synchronisation.</p>
+      <button id="bouton-inviter" class="bouton bouton-principal" type="button">Inviter un commercial</button>
+      <form id="formulaire-invitation" class="formulaire" novalidate autocomplete="off" hidden>
+        <label class="champ">E-mail Google du commercial<input id="invite-email" type="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="prenom@exemple.com"></label>
+        <label class="champ">Prénom<span class="aide-champ">colonne « Pris par »</span><input id="invite-prenom" type="text" autocapitalize="words"></label>
+        <button id="bouton-envoyer-invitation" class="bouton bouton-corail" type="submit">Inviter</button>
+      </form>
+      <div id="invitation-prete" class="invitation" hidden>
+        <p id="invitation-texte"></p>
+        <p id="invitation-lien" class="texte-lu petit"></p>
+        <a id="invitation-mailto" class="bouton bouton-corail" href="#">Envoyer par e-mail</a>
+        <button id="invitation-copier" class="bouton bouton-secondaire" type="button">Copier le lien</button>
+      </div>
     </section>
 
     <!-- Aide à l'installation (étape 5) -->
@@ -288,7 +350,7 @@
 
   <div id="message" class="message" role="status" aria-live="polite"></div>
 
-  <script type="module" src="/js/app.js"></script>
+  <script type="module" src="js/app.js"></script>
   <script src="https://accounts.google.com/gsi/client" async onload="window.carnetGisCharge && window.carnetGisCharge()"></script>
 </body>
 </html>

@@ -4,7 +4,9 @@
 export const VERIFIE = 'Vérifié dans l\'appli';
 export const A_VERIFIER = 'À vérifier';
 
-const NOM_BASE = 'carnet';
+import { ENV } from './environnement.js';
+
+const NOM_BASE = ENV.nomBase; // « carnet » en production, « carnet-equipe-test » dans la version de test
 const VERSION_BASE = 1;
 let promesseBase = null;
 
@@ -87,6 +89,11 @@ export async function lireReglage(cle, defaut) {
 // Écrit un réglage local.
 export function ecrireReglage(cle, valeur) {
   return operation('reglages', 'readwrite', (m) => m.put({ cle, valeur }));
+}
+
+// Supprime un réglage local.
+export function supprimerReglage(cle) {
+  return operation('reglages', 'readwrite', (m) => m.delete(cle));
 }
 
 // Renvoie tous les réglages locaux sous forme d'objet { cle: valeur }.

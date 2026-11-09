@@ -251,3 +251,68 @@ a.bouton-lien { display: inline-block; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Mode Équipe ---------- */
+
+/* Offres d'achat : Équipe mise en avant, Solo à côté */
+.offres { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0 12px; }
+.offre {
+  position: relative; display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  min-height: 84px; padding: 18px 12px 12px; border: 1px solid var(--bordure); border-radius: var(--rayon);
+  background: var(--blanc); color: var(--encre); text-decoration: none; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.offre strong { font: 800 17px/1.2 var(--f-texte); }
+.offre span { font: 400 13px/1.3 var(--f-mono); color: var(--gris); }
+.offre--equipe { border: 2px solid var(--corail-vif); background: var(--corail-pale); }
+.offre .offre__pastille {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  padding: 3px 8px; border-radius: 999px; background: var(--corail-vif); color: var(--encre);
+  font: 500 11px/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+}
+.offre:active { transform: scale(.98); }
+
+/* Compteurs par commercial (accueil du responsable) */
+.compteurs-equipe { list-style: none; margin: 10px 0 0; padding: 4px 14px; background: var(--blanc); border: 1px solid var(--bordure); border-radius: var(--rayon); }
+.compteur-membre { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--fond); }
+.compteur-membre:last-child { border-bottom: 0; }
+.compteur-membre__nom { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compteur-membre__chiffres { flex: none; font: 400 13px/1.3 var(--f-mono); color: var(--gris); font-variant-numeric: tabular-nums; }
+
+/* Bascule « Mes contacts / Toute l'équipe » (À relancer) */
+.bascule { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 12px 0; padding: 4px; background: var(--blanc); border: 1px solid var(--bordure); border-radius: var(--rayon); }
+.bascule__choix { min-height: 44px; border: 0; border-radius: 9px; background: transparent; color: var(--encre); font: 600 15px/1.2 var(--f-texte); cursor: pointer; }
+.bascule__choix[aria-pressed="true"] { background: var(--encre); color: var(--blanc); }
+
+/* Filtre par membre (Tous les contacts) */
+.champ select {
+  display: block; width: 100%; min-height: var(--tactile); margin-top: 6px; padding: 10px 12px;
+  border: 1px solid var(--bordure); border-radius: 10px; background: var(--blanc); color: var(--encre);
+  font: 400 17px/1.35 var(--f-texte); text-transform: none; letter-spacing: 0;
+}
+
+/* Mon équipe */
+.membre {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 60px; margin: 8px 0; padding: 10px 14px;
+  background: var(--blanc); border: 1px solid var(--bordure); border-radius: var(--rayon);
+}
+.invitation { margin: 16px 0; padding: 14px 16px; background: var(--bleu-pale); border-radius: var(--rayon); }
+.invitation p { margin: 0 0 8px; }
+.invitation .texte-lu { overflow-wrap: anywhere; }
+
+/* Rejoindre */
+.etapes { padding-left: 22px; }
+.etapes li { margin: 8px 0; }
+
+/* Champs en lecture seule (fiche d'un autre commercial, réglages de l'équipe) */
+.champ input[readonly], .champ textarea[readonly] { background: var(--fond); color: var(--gris); }
+
+/* Version de test : bandeau orangé fixe en haut */
+.bandeau-test {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 30; margin: 0;
+  padding: calc(4px + env(safe-area-inset-top)) 12px 4px; background: var(--corail-vif); color: var(--encre);
+  font: 500 12px/1.4 var(--f-mono); letter-spacing: .08em; text-align: center; pointer-events: none;
+}
+body.version-test { padding-top: calc(26px + env(safe-area-inset-top)); }
+body.version-test .bandeau { top: 26px; }

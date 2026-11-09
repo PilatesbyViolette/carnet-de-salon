@@ -2,7 +2,7 @@
 // Un tap sur un contact, dans l'accueil comme dans « Tous les contacts », ouvre sa fiche.
 // « Enregistrer » : contact mis à jour en local, puis ligne du tableau mise à jour par la file d'attente (hors connexion compris).
 
-import { afficher, enregistrerEcran, el, message, montrerErreur, ecranAffiche } from './interface.js';
+import { afficher, enregistrerEcran, el, message, montrerErreur, ecranAffiche, confirmer } from './interface.js';
 import * as base from './base.js';
 import * as drive from './drive.js';
 import * as espace from './espace.js';
@@ -11,6 +11,8 @@ import { jetonDansLeGeste, jetonValide } from './connexion.js';
 import { dateCourte } from './dates.js';
 import { sansAccent } from './tri.js';
 import { CHAMPS_MODIFIABLES, idPhoto } from './operations.js';
+import { contexteEquipe } from './equipe.js';
+import { peutModifier, prisParAffiche, filtrerParMembre, normaliserEmail, ROLE_COMMERCIAL } from './equipe-regles.js';
 
 let ouvert = null;          // contact affiché dans la fiche
 let origine = 'accueil';    // écran à retrouver en quittant la fiche
@@ -87,6 +89,14 @@ function brancherAppuiLong(ligne, bouton, c) {
 }
 
 // Ligne de liste pour un contact : bouton (tap = fiche, appui long = corbeille) avec nom, entreprise, date et badge.
+// Mode Équipe : « pris par Julie » sur les lignes et la fiche ; en Solo, rien (colonne masquée comme avant).
+function mentionPrisPar(c) {
+  const ctx = contexteEquipe();
+  if (!ctx.role) return '';
+  const prenom = prisParAffiche(c, ctx);
+  return prenom ? 'pris par ' + prenom : '';
+}
+
 export function elementContact(c) {
   let badge = null;
   if (c.source === 'local' && c.etat !== 'ecrit') badge = el('span', { class: 'badge badge-attente' }, 'En attente');
@@ -94,8 +104,14 @@ export function elementContact(c) {
   const bouton = el('button', { class: 'contact contact-bouton', type: 'button' },
     el('div', { class: 'contact__texte' },
       el('div', { class: 'contact__nom' }, nomAffiche(c)),
-      el('div', { class: 'contact__info' }, [c.entreprise && c.nom ? c.entreprise : '', dateCourte(c.creeLe)].filter(Boolean).join(' · '))),
+      el('div', { class: 'contact__info' }, [c.entreprise && c.nom ? c.entreprise : '', dateCourte(c.creeLe), mentionPrisPar(c)].filter(Boolean).join(' · '))),
     badge);
+  // Contact d'un autre commercial : consultable, sans corbeille
+  if (!peutModifier(c, contexteEquipe())) {
+    const ligne = el('li', { class: 'ligne-contact' }, bouton);
+    bouton.addEventListener('click', () => ouvrirFiche(c));
+    return ligne;
+  }
   const corbeille = el('button', {
     class: 'corbeille', type: 'button', 'aria-label': 'Supprimer ' + nomAffiche(c),
     onclick: () => { cacherCorbeille(); demanderSuppression(c); }
@@ -107,26 +123,10 @@ export function elementContact(c) {
 
 // ---------- Suppression (confirmation, puis file d'attente) ----------
 
-// Fenêtre de confirmation ; résout vrai sur « Supprimer », faux sur « Annuler ».
-function confirmer(texte) {
-  const fenetre = document.getElementById('confirmation');
-  document.getElementById('confirmation-texte').textContent = texte;
-  fenetre.hidden = false;
-  document.getElementById('confirmation-non').focus();
-  return new Promise((ok) => {
-    const fermer = (reponse) => {
-      fenetre.hidden = true;
-      document.getElementById('confirmation-oui').onclick = null;
-      document.getElementById('confirmation-non').onclick = null;
-      ok(reponse);
-    };
-    document.getElementById('confirmation-oui').onclick = () => fermer(true);
-    document.getElementById('confirmation-non').onclick = () => fermer(false);
-  });
-}
-
 // Demande confirmation puis supprime : retrait local immédiat, tableau et photo par la file d'attente.
+// Mode Équipe : un commercial ne supprime que ses contacts.
 export async function demanderSuppression(c) {
+  if (!peutModifier(c, contexteEquipe())) { montrerErreur('Ce contact a été pris par un autre membre de l\'équipe : seul le responsable peut le supprimer.'); return false; }
   if (!(await confirmer('Supprimer ' + nomAffiche(c) + ' ? Le contact sera retiré de votre tableau.'))) return false;
   try {
     await espace.supprimerContactPartout(c);
@@ -178,8 +178,13 @@ export function ouvrirFiche(c) {
   const ecran = ecranAffiche();
   origine = ecran === 'contacts' ? 'contacts' : 'accueil';
   ouvert = c;
-  CHAMPS_MODIFIABLES.forEach((k) => { champ(k).value = c[k] || ''; });
-  document.getElementById('fiche-date').textContent = c.creeLe ? 'Enregistré le ' + dateCourte(c.creeLe) : '';
+  const modifiable = peutModifier(c, contexteEquipe());
+  CHAMPS_MODIFIABLES.forEach((k) => { champ(k).value = c[k] || ''; champ(k).readOnly = !modifiable; });
+  document.getElementById('fiche-enregistrer').hidden = !modifiable;
+  document.getElementById('fiche-supprimer').hidden = !modifiable;
+  document.getElementById('fiche-lecture-seule').hidden = modifiable;
+  const pris = mentionPrisPar(c);
+  document.getElementById('fiche-date').textContent = [c.creeLe ? 'Enregistré le ' + dateCourte(c.creeLe) : '', pris].filter(Boolean).join(' · ');
   oublierPhoto();
   afficher('fiche');
   chargerPhoto(c);
@@ -193,7 +198,7 @@ function quitterFiche() {
 // « Enregistrer » : jeton redemandé dans le geste si besoin (avant tout await), contact modifié en local, file relancée.
 function surEnregistrer(evenement) {
   evenement.preventDefault();
-  if (!ouvert) return;
+  if (!ouvert || !peutModifier(ouvert, contexteEquipe())) return;
   const contact = ouvert;
   const champs = {};
   CHAMPS_MODIFIABLES.forEach((k) => { champs[k] = champ(k).value.trim(); });
@@ -207,10 +212,27 @@ function surEnregistrer(evenement) {
     .catch((e) => montrerErreur('Modification impossible : ' + e.message));
 }
 
-// Remplit « Tous les contacts », filtrée par la recherche (nom ou entreprise, sans tenir compte des accents).
+// Filtre par membre (mode Équipe) : « Toute l'équipe » ou un membre ; un commercial démarre sur ses contacts.
+let filtreChoisi = null; // e-mail du membre, '' pour toute l'équipe, null tant que personne n'a choisi
+function remplirFiltreMembres() {
+  const ctx = contexteEquipe();
+  const zone = document.getElementById('filtre-membre-bloc');
+  zone.hidden = !ctx.role;
+  if (!ctx.role) return '';
+  if (filtreChoisi === null) filtreChoisi = ctx.role === ROLE_COMMERCIAL ? normaliserEmail(ctx.moi) : '';
+  const choix = document.getElementById('filtre-membre');
+  const options = [['', 'Toute l\'équipe']].concat(ctx.membres.map((m) => [normaliserEmail(m.email), m.prenom || m.email]));
+  choix.replaceChildren(...options.map(([valeur, texte]) => el('option', { value: valeur }, texte)));
+  choix.value = options.some((o) => o[0] === filtreChoisi) ? filtreChoisi : '';
+  return choix.value;
+}
+
+// Remplit « Tous les contacts », filtrée par la recherche (nom ou entreprise, sans tenir compte des accents)
+// et, en mode Équipe, par membre.
 async function rafraichirTous() {
   const recherche = sansAccent(document.getElementById('recherche-contacts').value.trim());
-  const contacts = (await espace.vueContacts())
+  const membre = remplirFiltreMembres();
+  const contacts = filtrerParMembre(await espace.vueContacts(), membre, contexteEquipe())
     .filter((c) => !recherche || sansAccent((c.nom || '') + ' ' + (c.entreprise || '')).includes(recherche));
   document.getElementById('liste-tous').replaceChildren(...contacts.map(elementContact));
   document.getElementById('aucun-trouve').hidden = contacts.length > 0;
@@ -224,6 +246,7 @@ export function initContacts() {
   document.getElementById('fiche-retour').addEventListener('click', quitterFiche);
   document.getElementById('bouton-tous-contacts').addEventListener('click', () => afficher('contacts'));
   document.getElementById('recherche-contacts').addEventListener('input', () => rafraichirTous());
+  document.getElementById('filtre-membre').addEventListener('change', (e) => { filtreChoisi = e.target.value; rafraichirTous(); });
   document.getElementById('fiche-supprimer').addEventListener('click', () => {
     if (!ouvert) return;
     const c = ouvert;
@@ -237,5 +260,5 @@ export function initContacts() {
     cacherCorbeille();
   }, true);
   const siListe = () => { if (ecranAffiche() === 'contacts') rafraichirTous(); };
-  ['carnet:sync', 'carnet:contacts'].forEach((evt) => window.addEventListener(evt, siListe));
+  ['carnet:sync', 'carnet:contacts', 'carnet:equipe'].forEach((evt) => window.addEventListener(evt, siListe));
 }

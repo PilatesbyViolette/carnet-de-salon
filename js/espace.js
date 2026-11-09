@@ -4,7 +4,8 @@
 import * as base from './base.js';
 import * as drive from './drive.js';
 import { compteConnu } from './connexion.js';
-import { CLE_CODE, CLE_ESSAI } from './activation.js';
+import { CLE_CODE, CLE_ESSAI, roleEquipe, tableauCommercial } from './activation.js';
+import { ErreurEquipe, prenomDe, CLE_MODE, CLE_RESPONSABLE, CLE_CODE_EQUIPE, ROLE_COMMERCIAL } from './equipe-regles.js';
 import { ajouterOperation, appliquerOperations, numeroDeLigne, envoyerOperations, idPhoto } from './operations.js';
 
 // Réglages par défaut, repris du prototype (REGLAGES_DEFAUT) avec Votre nom, les délais et le code d'activation.
@@ -46,17 +47,48 @@ export async function reglage(cle) {
   return base.lireReglage(cle, ligne ? ligne[1] : '');
 }
 
-// Nom inscrit dans la colonne « Pris par » : Votre nom, sinon l'e-mail du compte.
+// Clés de l'activation et du mode Équipe envoyées vers l'onglet Réglages même sans « Enregistrer les réglages ».
+const CLES_ACTIVATION = [CLE_CODE, CLE_ESSAI, CLE_MODE, CLE_RESPONSABLE, CLE_CODE_EQUIPE];
+// Réglages propres à chaque membre : jamais recopiés depuis le tableau d'équipe chez un commercial.
+const CLES_PERSONNELLES = ['Votre signature', 'Votre nom', CLE_CODE, CLE_ESSAI];
+
+// Vrai pour un commercial d'une équipe (le tableau appartient au responsable).
+const estCommercial = () => roleEquipe() === ROLE_COMMERCIAL;
+
+// Nom inscrit dans la colonne « Pris par » : en équipe, le prénom de l'onglet Équipe ; sinon Votre nom, sinon l'e-mail.
 export async function prisPar() {
+  if (roleEquipe()) {
+    const prenom = prenomDe(await base.lireReglage('_equipe', []), compteConnu());
+    if (prenom) return prenom;
+  }
   return (await reglage('Votre nom')) || compteConnu();
 }
 
 // Retrouve (id gardé, puis recherche par nom) ou crée le tableau et le dossier ; une vérification par session.
+// Commercial : le tableau est celui de l'équipe (choisi par Google Picker), jamais recherché ni créé ; ses photos vont
+// dans un dossier de son propre Drive.
 export async function preparerEspace() {
   if (espaceVerifie) return;
-  ids.tableau = await retrouverOuCreer('_idTableau', drive.NOM_TABLEAU, drive.TYPE_TABLEAU, creerTableauInitial);
+  if (estCommercial()) {
+    const id = tableauCommercial();
+    if (!id || !(await accessible(id))) throw new ErreurEquipe('Le carnet de votre équipe n\'est plus accessible : le responsable vous a sans doute retiré de l\'équipe.');
+    ids.tableau = id;
+    await base.ecrireReglage('_idTableau', id);
+  } else {
+    ids.tableau = await retrouverOuCreer('_idTableau', drive.NOM_TABLEAU, drive.TYPE_TABLEAU, creerTableauInitial);
+  }
   ids.dossier = await retrouverOuCreer('_idDossier', drive.NOM_DOSSIER, drive.TYPE_DOSSIER, drive.creerDossier);
   espaceVerifie = true;
+}
+
+// Vrai si le tableau d'équipe est toujours ouvert à ce compte (403 ou 404 : partage retiré ou tableau supprimé).
+async function accessible(id) {
+  try {
+    return await drive.fichierExiste(id);
+  } catch (e) {
+    if (e.statut === 403) return false;
+    throw e;
+  }
 }
 
 // Cherche un fichier de l'espace et le crée s'il n'existe plus ; garde son id en local.
@@ -94,13 +126,19 @@ export async function enregistrerReglages(valeurs) {
 
 // Envoie les réglages locaux (tous, ou seulement ceux de l'activation) vers l'onglet Réglages, en gardant
 // les clés du tableau que l'appli ne connaît pas ; une date « Essai commencé le » déjà dans le tableau fait foi.
+// Un commercial n'écrit jamais dans l'onglet Réglages de l'équipe (réglages du responsable).
 export async function envoyerReglagesSiBesoin() {
+  if (estCommercial()) {
+    await base.ecrireReglage('_reglagesAEnvoyer', false);
+    await base.ecrireReglage('_activationAEnvoyer', false);
+    return;
+  }
   const tout = await base.lireReglage('_reglagesAEnvoyer', false);
   if (!tout && !(await base.lireReglage('_activationAEnvoyer', false))) return;
   const distants = await drive.lireReglagesTableau(ids.tableau);
   const fusion = new Map(distants.filter((l) => l[0]).map((l) => [l[0], l[1] || '']));
   const locaux = await base.tousLesReglages();
-  const cles = tout ? Object.keys(locaux).filter((cle) => !estInterne(cle)) : [CLE_CODE, CLE_ESSAI].filter((cle) => locaux[cle]);
+  const cles = tout ? Object.keys(locaux).filter((cle) => !estInterne(cle)) : CLES_ACTIVATION.filter((cle) => locaux[cle]);
   cles.forEach((cle) => fusion.set(cle, String(locaux[cle])));
   const essaiDistant = distants.filter((l) => l[0] === CLE_ESSAI).map((l) => l[1])[0];
   if (essaiDistant) { fusion.set(CLE_ESSAI, essaiDistant); await base.ecrireReglage(CLE_ESSAI, essaiDistant); }
@@ -111,15 +149,29 @@ export async function envoyerReglagesSiBesoin() {
 }
 
 // Relit le tableau : copie locale des lignes de contacts et des réglages (« Essai commencé le » du tableau fait foi).
+// Un contact déjà envoyé (état « ecrit ») dont l'Id n'est plus dans le tableau a été supprimé ailleurs (autre
+// téléphone de l'équipe, ou directement dans Google Sheets) : il est retiré du téléphone. Un contact pas encore
+// envoyé n'est jamais retiré. Les contacts « ecrit » sont relevés AVANT la lecture du tableau : un contact écrit
+// pendant cette lecture n'est donc pas concerné.
 export async function rafraichirDepuisTableau() {
+  const dejaEnvoyes = (await base.tousLesContacts()).filter((c) => c.etat === 'ecrit').map((c) => c.id);
   const lignes = await drive.lireLignes(ids.tableau);
-  await base.ecrireReglage('_lignes', lignes.map(ligneVersContact));
+  const contacts = lignes.map(ligneVersContact);
+  await base.ecrireReglage('_lignes', contacts);
+  const presents = new Set(contacts.map((c) => c.id));
+  for (const id of dejaEnvoyes) {
+    if (presents.has(id)) continue;
+    const c = await base.lireContact(id);
+    if (c && c.etat === 'ecrit') await base.supprimerContact(id);
+  }
   const enAttente = await base.lireReglage('_reglagesAEnvoyer', false);
   const activationEnAttente = await base.lireReglage('_activationAEnvoyer', false);
+  const commercial = estCommercial();
   for (const [cle, valeur] of await drive.lireReglagesTableau(ids.tableau)) {
     if (!cle || estInterne(cle)) continue;
+    if (commercial) { if (!CLES_PERSONNELLES.includes(cle)) await base.ecrireReglage(cle, valeur || ''); continue; }
     if (cle === CLE_ESSAI) { if (valeur) await base.ecrireReglage(cle, valeur); }
-    else if (!enAttente && !(cle === CLE_CODE && activationEnAttente)) await base.ecrireReglage(cle, valeur || '');
+    else if (!enAttente && !(CLES_ACTIVATION.includes(cle) && activationEnAttente)) await base.ecrireReglage(cle, valeur || '');
   }
 }
 
@@ -157,20 +209,29 @@ export async function envoyerRelancesSiBesoin() {
   await base.ecrireReglage('_relancesAEnvoyer', (await base.lireReglage('_relancesAEnvoyer', [])).filter((r) => !envoyee(r)));
 }
 
-// Transforme une ligne du tableau (colonnes A à N) en objet contact.
-function ligneVersContact(l, index) {
+// Transforme une ligne du tableau (colonnes A à O) en objet contact.
+export function ligneVersContact(l, index) {
   const v = (i) => l[i] || '';
   return {
     id: v(0) || 'ligne-' + (index + 2), creeLe: v(1), prisPar: v(2), nom: v(3), entreprise: v(4), email: v(5),
     tel: v(6), site: v(7), note: v(8), photoLien: v(9), statut: v(10), relanceJ2: v(11), relanceJ7: v(12),
-    texte: v(13), etat: 'ecrit', source: 'tableau'
+    texte: v(13), compte: v(14), etat: 'ecrit', source: 'tableau'
   };
 }
 
-// Ligne du tableau (colonnes A à N) pour un contact local.
-export function contactVersLigne(c, nomPrisPar) {
+// Ligne du tableau (colonnes A à O) pour un contact local ; compte : e-mail de la personne qui l'a pris.
+export function contactVersLigne(c, nomPrisPar, compte) {
   return [c.id, c.creeLe, nomPrisPar, c.nom || '', c.entreprise || '', c.email || '', c.tel || '', c.site || '',
-    c.note || '', c.photoLien || '', c.statut, c.relanceJ2 || '', c.relanceJ7 || '', c.texte || ''];
+    c.note || '', c.photoLien || '', c.statut, c.relanceJ2 || '', c.relanceJ7 || '', c.texte || '', compte || ''];
+}
+
+// Commercial retiré de l'équipe : réglages et copie du tableau d'équipe effacés du téléphone ; seuls les contacts
+// pas encore envoyés sont gardés (ils partiront vers son propre carnet s'il en ouvre un).
+export async function oublierEquipeSurTelephone() {
+  for (const c of await base.tousLesContacts()) if (c.etat === 'ecrit') await base.supprimerContact(c.id);
+  const reglages = await base.tousLesReglages();
+  for (const cle of Object.keys(reglages)) await base.supprimerReglage(cle);
+  oublierEspace();
 }
 
 // Vue d'ensemble : lignes du tableau + contacts locaux pas encore écrits, du plus récent au plus ancien.

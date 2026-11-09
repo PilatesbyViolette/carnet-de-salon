@@ -7,6 +7,8 @@ import * as espace from './espace.js';
 import { jetonDansLeGeste } from './connexion.js';
 import { dateCourte } from './dates.js';
 import { nomAffiche } from './accueil.js';
+import { contexteEquipe } from './equipe.js';
+import { estAMoi } from './equipe-regles.js';
 
 const CHAMPS = ['nom', 'entreprise', 'email', 'tel', 'site', 'note'];
 let enCours = null; // contact ouvert
@@ -21,7 +23,10 @@ async function afficherListe() {
   enCours = null;
   document.getElementById('fiche-verifier').hidden = true;
   document.getElementById('liste-verifier-bloc').hidden = false;
-  const contacts = (await espace.vueContacts()).filter((c) => c.statut === base.A_VERIFIER && c.etat === 'ecrit');
+  // Mode Équipe : chacun vérifie les cartes qu'il a prises
+  const ctx = contexteEquipe();
+  const contacts = (await espace.vueContacts())
+    .filter((c) => c.statut === base.A_VERIFIER && c.etat === 'ecrit' && (!ctx.role || estAMoi(c, ctx)));
   document.getElementById('liste-verifier').replaceChildren(...contacts.map((c) =>
     el('li', {},
       el('button', { class: 'contact contact-bouton', type: 'button', onclick: () => ouvrirFiche(c) },
