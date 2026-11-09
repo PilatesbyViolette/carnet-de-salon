@@ -42,7 +42,7 @@ function preparer() {
   document.getElementById('rejoindre-compte').textContent = compte ? 'Connecté avec ' + compte : '';
   document.getElementById('rejoindre-compte').hidden = !compte;
   document.getElementById('bouton-rejoindre-connexion').textContent = compte ? 'Changer de compte Google' : 'Se connecter avec Google';
-  document.getElementById('bouton-rejoindre-connexion').className = 'bouton ' + (compte ? 'bouton-discret' : 'bouton-principal');
+  document.getElementById('bouton-rejoindre-connexion').className = 'bouton ' + (compte ? 'bouton-secondaire' : 'bouton-principal');
   document.getElementById('bouton-choisir-carnet').hidden = !compte;
   document.getElementById('rejoindre-etat').hidden = true;
   if (compte && navigator.onLine) chargerPicker().catch(() => { /* réessayé au tap */ });
