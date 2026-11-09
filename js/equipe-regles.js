@@ -16,6 +16,12 @@ export function normaliserEmail(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+// Vrai si « Saisir un autre code » est proposé dans Réglages : essai (en cours ou terminé), Solo et démonstration ;
+// jamais pour le responsable (son code Équipe porte l'équipe) ni pour le commercial invité (sans code à lui).
+export function peutSaisirAutreCode(role) {
+  return role !== ROLE_RESPONSABLE && role !== ROLE_COMMERCIAL;
+}
+
 // Vrai si le texte ressemble à une adresse e-mail.
 export function emailValide(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());

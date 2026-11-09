@@ -124,7 +124,7 @@ async function demarrer() {
   enregistrerServiceWorker();
   enregistrerEcran('connexion', {});
   brancherLiensAchat();
-  initActivation(ouvrirApresActivation);
+  initActivation(() => chargerContexteEquipe().then(ouvrirApresActivation)); // essai → Équipe : rôle responsable sans réinstaller
   initRelances();
   initAccueil();
   initContacts();

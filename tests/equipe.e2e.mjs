@@ -2,7 +2,8 @@
 // avec un faux Google en mémoire (connexion, Drive, Sheets, partage, Google Picker). Hors appli, jamais servi.
 //   node tests/equipe.e2e.mjs [chemin]     chemin : '' (racine, branche equipe) ou 'equipe-test/' (copie de test)
 // Playwright : PLAYWRIGHT=chemin/vers/playwright/index.mjs (par défaut celui du dossier du site).
-// Code Équipe : première ligne de outils/codes_equipe_a_importer.csv (fichier local).
+// Code Équipe : première ligne de outils/codes_equipe_a_importer.csv (fichier local), sinon un code de test.
+// Codes de test (CODES_TEST) : ajoutés à js/codes.js par le serveur du test seulement, jamais dans le dépôt servi.
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -28,6 +29,12 @@ function verifier(nom, condition, detail = '') {
   console.log((condition ? 'vert  ' : 'ROUGE ') + nom + (condition || !detail ? '' : ' : ' + detail));
 }
 
+// ---------- Codes de test ----------
+const CODES_TEST = { nico: 'CDE-TEST-NICO', solo: 'CDS-TEST-SOLO', equipe: 'CDE-TEST-EQPE' };
+const empreinteDe = (c) => crypto.createHash('sha256').update(c.toUpperCase().replace(/[\s-]+/g, '')).digest('hex');
+const LIGNES_TEST = Object.values(CODES_TEST).map((c) => { const t = c.startsWith('CDE') ? ['equipe', 'équipe'] : ['achat', 'achat'];
+  return `  { empreinte: '${empreinteDe(c)}', type: '${t[0]}', dureeHeures: null, libelle: '${t[1]}' }`; }).join(',\n');
+
 // ---------- Serveur statique ----------
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml' };
 const serveur = http.createServer((req, res) => {
@@ -36,6 +43,7 @@ const serveur = http.createServer((req, res) => {
   const f = path.join(RACINE, p);
   if (!f.startsWith(RACINE) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end('absent'); return; }
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+  if (p.endsWith('/js/codes.js')) { res.end(fs.readFileSync(f, 'utf8').replace(/\s*\];\s*$/, ',\n' + LIGNES_TEST + '\n];\n')); return; }
   fs.createReadStream(f).pipe(res);
 });
 await new Promise((ok) => serveur.listen(PORT, '127.0.0.1', ok));
@@ -226,6 +234,11 @@ async function personne(email, nom) {
 const visible = (page, sel) => page.isVisible(sel);
 const attendreEcran = (page, nom) => page.waitForSelector('#ecran-' + nom + ':not([hidden])', { timeout: 8000 });
 const textes = (page, sel) => page.$$eval(sel, (e) => e.map((x) => x.textContent.trim()));
+// Textes d'une liste, attendus jusqu'à 3 s (rendu asynchrone) ; renvoie ce qui est affiché à la fin.
+async function textesAttendus(page, sel, attendu) {
+  for (let i = 0; i < 30; i++) { const t = (await textes(page, sel)).join(); if (t === attendu) return t; await page.waitForTimeout(100); }
+  return (await textes(page, sel)).join();
+}
 const bandeauErreur = async (page) => ((await visible(page, '#bandeau-erreur')) ? (await page.textContent('#bandeau-erreur span')) : '');
 async function synchroniser(page) {
   await page.evaluate(() => new Promise((ok) => {
@@ -247,8 +260,9 @@ const tableau = () => [...fichiers.values()].find((f) => f.onglets && f.owner ==
 const reglagesDuTableau = () => Object.fromEntries(tableau().onglets.get('Réglages').lignes.slice(1).map((l) => [l[0], l[1]]));
 const lignesContacts = () => tableau().onglets.get('Contacts').lignes.slice(1).filter((l) => l && l[0]);
 
-const code = fs.readFileSync(path.join(RACINE, 'outils/codes_equipe_a_importer.csv'), 'utf8').split(/\r?\n/)[1].split(',')[0];
-const empreinteCode = crypto.createHash('sha256').update(code.toUpperCase().replace(/[\s-]+/g, '')).digest('hex');
+const CSV_EQUIPE = path.join(RACINE, 'outils/codes_equipe_a_importer.csv');
+const code = fs.existsSync(CSV_EQUIPE) ? fs.readFileSync(CSV_EQUIPE, 'utf8').split(/\r?\n/)[1].split(',')[0] : CODES_TEST.nico;
+const empreinteCode = empreinteDe(code);
 
 try {
   // ===== 1. Responsable : activation par code Équipe =====
@@ -257,7 +271,7 @@ try {
   await attendreEcran(nico.page, 'activation');
   const offres = await nico.page.$$eval('#ecran-activation .offre', (e) => e.map((a) => a.textContent.replace(/\s+/g, ' ').trim() + ' -> ' + a.href));
   verifier('Activation : deux offres, Équipe recommandée en premier', offres.length === 2 && /Recommandé.*Équipe · 990 €.*utilisateurs illimités/.test(offres[0]) && /Solo · 690 €/.test(offres[1]), offres.join(' | '));
-  verifier('Activation : lien Solo vers Stripe, lien Équipe provisoire', offres[1].includes('buy.stripe.com') && offres[0].includes('optimisons.ai/carnet-de-salon/'));
+  verifier('Activation : liens Solo et Équipe vers Stripe', offres[1].includes('buy.stripe.com/28E5') && offres[0].includes('buy.stripe.com/8x24'), offres.join(' | '));
   await capture(nico, 'e2e-1-activation');
   await nico.page.fill('#champ-code', code.toLowerCase().replace(/-/g, ' '));
   await nico.page.click('#formulaire-activation button[type=submit]');
@@ -294,7 +308,8 @@ try {
   // ===== 2. Invitation =====
   await nico.page.click('#bouton-mon-equipe');
   await attendreEcran(nico.page, 'equipe');
-  verifier('Mon équipe : le responsable est listé', (await textes(nico.page, '#liste-membres .contact__nom')).join() === 'Nicolas');
+  const membresNico = await textesAttendus(nico.page, '#liste-membres .contact__nom', 'Nicolas');
+  verifier('Mon équipe : le responsable est listé', membresNico === 'Nicolas', membresNico);
   await nico.page.click('#bouton-inviter');
   await nico.page.fill('#invite-email', 'pas-une-adresse');
   await nico.page.click('#bouton-envoyer-invitation');
@@ -373,7 +388,8 @@ try {
   verifier('Commercial : Pris par affiché dans la liste', (await textes(julie.page, '#liste-derniers .contact__info')).some((t) => t.includes('pris par Julie')));
   await julie.page.click('#bouton-tous-contacts');
   await attendreEcran(julie.page, 'contacts');
-  verifier('Tous les contacts (commercial) : ses contacts par défaut', (await textes(julie.page, '#liste-tous .contact__nom')).join() === 'Alain Bernard');
+  const tousJulieDefaut = await textesAttendus(julie.page, '#liste-tous .contact__nom', 'Alain Bernard');
+  verifier('Tous les contacts (commercial) : ses contacts par défaut', tousJulieDefaut === 'Alain Bernard', tousJulieDefaut);
   await julie.page.selectOption('#filtre-membre', '');
   await julie.page.waitForTimeout(200);
   verifier('Tous les contacts : « Toute l\'équipe »', (await textes(julie.page, '#liste-tous .contact__nom')).sort().join() === 'Alain Bernard,Marie Dupont');
@@ -425,7 +441,8 @@ try {
   await nico.page.click('#bouton-reglages'); await attendreEcran(nico.page, 'reglages');
   await synchroniser(nico.page);
   await nico.page.click('[data-retour]:visible'); await attendreEcran(nico.page, 'accueil');
-  verifier('Accueil responsable : compteur À relancer = ses relances', (await nico.page.textContent('#compte-a-relancer')) === '1');
+  const aRelancerNico = await textesAttendus(nico.page, '#compte-a-relancer', '1');
+  verifier('Accueil responsable : compteur À relancer = ses relances', aRelancerNico === '1', aRelancerNico);
   await nico.page.click('#bouton-a-relancer'); await attendreEcran(nico.page, 'relancer');
   await nico.page.waitForTimeout(300);
   verifier('Relances du responsable : les siennes', (await textes(nico.page, '#liste-relancer .contact__nom')).join() === 'Bernard Petit');
@@ -568,6 +585,72 @@ try {
   await solo.page.click('[data-retour]:visible'); await attendreEcran(solo.page, 'accueil');
   await solo.page.waitForTimeout(300);
   verifier('Solo : accueil sans le contact supprimé', !(await textes(solo.page, '#liste-derniers .contact__nom')).includes('Luc Solo') && (await solo.page.textContent('#chiffre-total')) === '0');
+
+  // ===== 9 bis. Essai en cours → Solo (écran Essai) → Équipe (Réglages), sans réinstaller =====
+  const ess = await personne('essai@exemple.com', 'essai');
+  await ess.page.goto(APPLI);
+  await attendreEcran(ess.page, 'activation');
+  await ess.page.click('#bouton-essai-gratuit');
+  await attendreEcran(ess.page, 'connexion');
+  await ess.page.click('#bouton-connexion');
+  await attendreEcran(ess.page, 'reglages');
+  verifier('Essai : « Saisir un autre code » proposé dans Réglages', await visible(ess.page, '#bouton-autre-code'));
+  await ess.page.fill('#reg-salon', 'Salon essai');
+  await ess.page.click('#formulaire-reglages button[type=submit]');
+  await attendreEcran(ess.page, 'accueil');
+  await saisirSansCarte(ess.page, { nom: 'Anne Essai', email: 'anne@exemple.com' });
+  await ess.page.click('#bouton-reglages'); await attendreEcran(ess.page, 'reglages');
+  await synchroniser(ess.page);
+  const tEssai = () => [...fichiers.values()].find((f) => f.onglets && f.owner === 'essai@exemple.com' && !f.trashed);
+  const idTableauEssai = tEssai().id;
+  await ess.page.click('[data-retour]:visible'); await attendreEcran(ess.page, 'accueil');
+  const texteEssai = await ess.page.textContent('#pastille-essai');
+  verifier('Essai en cours : la pastille invite à saisir un code', /^Essai jusqu'au .+ : toucher pour saisir un code$/.test(texteEssai.trim()), texteEssai);
+  await ess.page.click('#pastille-essai');
+  await attendreEcran(ess.page, 'essai');
+  verifier('Essai en cours : écran Essai « en cours », pas « terminé »', (await ess.page.textContent('#essai-titre')) === 'Votre essai est en cours.' && (await ess.page.textContent('#essai-texte')).startsWith('Il se termine le '), await ess.page.textContent('#essai-titre'));
+  await ess.page.fill('#champ-code-essai', CODES_TEST.solo.toLowerCase());
+  await ess.page.click('#formulaire-code-essai button[type=submit]');
+  await attendreEcran(ess.page, 'accueil');
+  await ess.page.waitForTimeout(300);
+  verifier('Essai → Solo : pastille d\'essai disparue', !(await visible(ess.page, '#pastille-essai')));
+  await ess.page.click('#bouton-reglages'); await attendreEcran(ess.page, 'reglages');
+  await ess.page.waitForTimeout(300);
+  verifier('Essai → Solo : Réglages, code acheté', (await ess.page.textContent('#reg-code')) === CODES_TEST.solo + ' · acheté', await ess.page.textContent('#reg-code'));
+  verifier('Solo : « Saisir un autre code » visible, champ replié', (await visible(ess.page, '#bouton-autre-code')) && !(await visible(ess.page, '#formulaire-autre-code')));
+  await ess.page.click('#bouton-autre-code');
+  verifier('Autre code : même placeholder que l\'écran d\'activation', (await ess.page.getAttribute('#champ-autre-code', 'placeholder')) === (await ess.page.getAttribute('#champ-code', 'placeholder')));
+  await ess.page.fill('#champ-autre-code', 'CDS-ZZZZ-ZZZZ');
+  await ess.page.click('#bouton-activer-autre-code');
+  await ess.page.waitForSelector('#autre-code-erreur:not([hidden])', { timeout: 3000 });
+  verifier('Autre code : code inconnu, erreur sous le champ', (await ess.page.textContent('#autre-code-erreur')).startsWith('Code inconnu'));
+  await ess.page.fill('#champ-autre-code', CODES_TEST.equipe);
+  await ess.page.click('#bouton-activer-autre-code');
+  verifier('Solo → Équipe : « Mon équipe » apparaît sans réinstaller', await ess.page.waitForSelector('#bouton-mon-equipe:not([hidden])', { timeout: 5000 }).then(() => true, () => false));
+  verifier('Solo → Équipe : message de confirmation', (await ess.page.textContent('#message')).startsWith('Code Équipe activé : vous êtes responsable'), await ess.page.textContent('#message'));
+  verifier('Solo → Équipe : Réglages, code masqué et prénom', /^CDE-••••-EQPE · Équipe, vous êtes responsable$/.test(await ess.page.textContent('#reg-code')) && (await visible(ess.page, '#reg-nom-bloc')), await ess.page.textContent('#reg-code'));
+  verifier('Responsable : « Saisir un autre code » caché', !(await visible(ess.page, '#reg-autre-code')));
+  await ess.page.fill('#reg-nom', 'Anne');
+  await ess.page.click('#formulaire-reglages button[type=submit]');
+  await ess.page.waitForTimeout(500);
+  await synchroniser(ess.page);
+  await synchroniser(ess.page);
+  const regEssai = Object.fromEntries(tEssai().onglets.get('Réglages').lignes.slice(1).map((l) => [l[0], l[1]]));
+  verifier('Solo → Équipe : même tableau, pas de nouveau tableau', tEssai().id === idTableauEssai && [...fichiers.values()].filter((f) => f.onglets && f.owner === 'essai@exemple.com').length === 1);
+  verifier('Solo → Équipe : tableau en mode Équipe (Mode, Responsable, Code équipe)', regEssai['Mode'] === 'Équipe' && regEssai['Responsable'] === 'essai@exemple.com' && regEssai['Code équipe'] === empreinteDe(CODES_TEST.equipe), JSON.stringify(regEssai));
+  verifier('Solo → Équipe : code masqué dans le tableau', regEssai['Code d\'activation'] === 'CDE-••••-EQPE', regEssai['Code d\'activation']);
+  const eqEssai = tEssai().onglets.get('Équipe');
+  verifier('Solo → Équipe : onglet Équipe avec le responsable', !!eqEssai && eqEssai.lignes[1][0] === 'essai@exemple.com' && eqEssai.lignes[1][1] === 'Anne' && eqEssai.lignes[1][2] === 'responsable', eqEssai && JSON.stringify(eqEssai.lignes));
+  verifier('Solo → Équipe : contact d\'avant conservé (tableau et téléphone)', tEssai().onglets.get('Contacts').lignes.some((l) => l[3] === 'Anne Essai') && (await contactsLocaux(ess.page)).some((c) => c.nom === 'Anne Essai'));
+  await ess.page.click('[data-retour]:visible'); await attendreEcran(ess.page, 'accueil');
+  await ess.page.waitForTimeout(300);
+  verifier('Solo → Équipe : compteurs d\'équipe sur l\'accueil, contact d\'avant compté', (await visible(ess.page, '#compteurs-equipe')) && (await ess.page.textContent('#chiffre-total')) === '1');
+  await ess.page.click('#bouton-reglages'); await attendreEcran(ess.page, 'reglages');
+  await ess.page.click('#bouton-mon-equipe');
+  await attendreEcran(ess.page, 'equipe');
+  const membresEssai = await textesAttendus(ess.page, '#liste-membres .contact__nom', 'Anne');
+  verifier('Solo → Équipe : Mon équipe liste le responsable', membresEssai === 'Anne', membresEssai);
+  await capture(ess, 'e2e-9-solo-vers-equipe');
 
   // ===== 10. Isolation de la version de test =====
   if (CHEMIN.includes('equipe-test')) {

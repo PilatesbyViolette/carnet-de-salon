@@ -8,7 +8,7 @@
 
 import { CODES } from './codes.js';
 import * as base from './base.js';
-import { enregistrerEcran, montrerErreur } from './interface.js';
+import { enregistrerEcran, montrerErreur, message } from './interface.js';
 import { dateIso, dateCourte } from './dates.js';
 import { lireLocal, ecrireLocal, retirerLocal } from './stockage.js';
 
@@ -184,10 +184,26 @@ export async function activer(saisie) {
   const valeur = await empreinte(normal);
   if (!trouverCode(valeur)) throw new Error('Code inconnu. Vérifiez chaque caractère (les codes CDS et CDE ne contiennent ni O, ni 0, ni I, ni 1).');
   if (roleEquipe() === 'commercial') throw new Error('Vous êtes membre d\'une équipe. Pour utiliser votre propre code, quittez d\'abord l\'équipe (Réglages, Se déconnecter).');
+  if (roleEquipe() === 'responsable' && trouverCode(valeur).type !== 'equipe') throw new Error('Vous êtes responsable d\'une équipe : seul un code Équipe peut remplacer votre code.');
   ecrireLocal(LOCAL_ACTIVATION, JSON.stringify({ code: codeAffiche(normal), empreinte: valeur }));
   await chargerActivation();
   signaler();
   if (essaiTermine()) throw new Error('Ce code d\'essai est déjà terminé. Achetez un code pour continuer à capturer.');
+}
+
+// Message après un changement de code (Réglages, écran Essai) : les contacts du téléphone et le tableau sont gardés.
+export function messageCodeActive() {
+  if (etat && etat.role === 'responsable') return 'Code Équipe activé : vous êtes responsable de l\'équipe. Vos contacts sont conservés.';
+  return 'Code activé. Vos contacts sont conservés.';
+}
+
+// Textes de l'écran Essai : essai terminé (achat ou code) ou essai en cours (code acheté sur le stand, par exemple).
+function textesEcranEssai() {
+  const termine = essaiTermine();
+  document.getElementById('essai-titre').firstChild.textContent = termine ? 'Votre essai est terminé' : 'Votre essai est en cours';
+  document.getElementById('essai-texte').textContent = termine
+    ? 'Vos contacts restent consultables et vous pouvez toujours les relancer. Pour capturer de nouveaux contacts, achetez votre code.'
+    : 'Il se termine le ' + dateCourte(etat.fin) + '. Vous avez déjà un code ? Saisissez-le ci-dessous : vos contacts sont conservés.';
 }
 
 // Commercial qui a rejoint une équipe : activé sans code, rattaché au tableau choisi.
@@ -204,14 +220,14 @@ export async function quitterEquipe() {
   signaler();
 }
 
-// Formulaire de code (écran Activation ou Essai terminé) : erreur sous le champ, sinon écran suivant.
-function brancherFormulaire(idFormulaire, idChamp, idErreur) {
+// Formulaire de code (écran Activation ou Essai) : erreur sous le champ, sinon écran suivant (et message si demandé).
+function brancherFormulaire(idFormulaire, idChamp, idErreur, avecMessage = false) {
   const erreur = document.getElementById(idErreur);
   document.getElementById(idFormulaire).addEventListener('submit', (evenement) => {
     evenement.preventDefault();
     erreur.hidden = true;
     activer(document.getElementById(idChamp).value)
-      .then(() => { document.getElementById(idChamp).value = ''; suite(); })
+      .then(() => { document.getElementById(idChamp).value = ''; if (avecMessage) message(messageCodeActive()); return suite(); })
       .catch((e) => { erreur.textContent = e.message; erreur.hidden = false; });
   });
 }
@@ -221,9 +237,9 @@ export function initActivation(apresActivation) {
   suite = apresActivation;
   const vider = (id) => () => { document.getElementById(id).hidden = true; };
   enregistrerEcran('activation', { afficher: vider('activation-erreur') });
-  enregistrerEcran('essai', { afficher: vider('essai-erreur') });
+  enregistrerEcran('essai', { afficher: () => { vider('essai-erreur')(); if (etat && etat.fin) textesEcranEssai(); } });
   brancherFormulaire('formulaire-activation', 'champ-code', 'activation-erreur');
-  brancherFormulaire('formulaire-code-essai', 'champ-code-essai', 'essai-erreur');
+  brancherFormulaire('formulaire-code-essai', 'champ-code-essai', 'essai-erreur', true);
   document.getElementById('bouton-essai-gratuit').addEventListener('click', () => {
     commencerEssai().then(suite).catch((e) => montrerErreur('Essai : ' + e.message));
   });

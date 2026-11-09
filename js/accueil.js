@@ -38,7 +38,7 @@ function elementErreur(c) {
     bouton);
 }
 
-// Pastille de l'essai : date de fin, ou « Essai terminé » (toucher ouvre l'écran d'achat).
+// Pastille de l'essai : date de fin, ou « Essai terminé » ; toucher ouvre l'écran Essai (achat ou saisie d'un code).
 function pastilleEssai() {
   const fin = finEssai();
   const p = document.getElementById('pastille-essai');
@@ -46,8 +46,8 @@ function pastilleEssai() {
   if (fin == null) return;
   const termine = essaiTermine();
   p.classList.toggle('pastille-alerte', termine);
-  p.classList.toggle('pastille-bouton', termine);
-  p.querySelector('span').textContent = termine ? 'Essai terminé : toucher pour acheter' : 'Essai jusqu\'au ' + dateCourte(fin);
+  p.classList.add('pastille-bouton');
+  p.querySelector('span').textContent = termine ? 'Essai terminé : toucher pour acheter' : 'Essai jusqu\'au ' + dateCourte(fin) + ' : toucher pour saisir un code';
 }
 
 // Rafraîchit tout l'accueil à partir de la vue locale (tableau + contacts pas encore écrits).
@@ -108,7 +108,7 @@ function surReconnexion() {
 export function initAccueil() {
   enregistrerEcran('accueil', { afficher: rafraichirAccueil });
   document.getElementById('pastille-reconnexion').addEventListener('click', surReconnexion);
-  document.getElementById('pastille-essai').addEventListener('click', () => { if (essaiTermine()) afficher('essai'); });
+  document.getElementById('pastille-essai').addEventListener('click', () => { if (finEssai() != null) afficher('essai'); });
   document.getElementById('bouton-a-verifier').addEventListener('click', () => afficher('verifier'));
   document.getElementById('bouton-a-relancer').addEventListener('click', () => afficher('relancer'));
   document.getElementById('bouton-reglages').addEventListener('click', () => afficher('reglages'));

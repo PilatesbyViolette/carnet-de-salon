@@ -78,5 +78,9 @@ export async function lancerTests() {
   verifier('Invitation : jamais de tiret cadratin', false, new RegExp('\\u2014').test(m.corps));
   verifier('Invitation : se termine par la signature', 'Bien cordialement,\nNicolas', m.corps.split('\n').slice(-2).join('\n'));
 
+  verifier('Autre code : proposé en essai, Solo ou démonstration', true, R.peutSaisirAutreCode(''));
+  verifier('Autre code : caché pour le responsable', false, R.peutSaisirAutreCode(R.ROLE_RESPONSABLE));
+  verifier('Autre code : caché pour le commercial invité', false, R.peutSaisirAutreCode(R.ROLE_COMMERCIAL));
+
   return resultats;
 }

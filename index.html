@@ -49,8 +49,8 @@
       <header class="entete">
         <button class="bouton-lien" type="button" data-retour>Accueil</button>
       </header>
-      <h1 class="titre-connexion">Votre essai est terminé<span class="point">.</span></h1>
-      <p class="texte-doux">Vos contacts restent consultables et vous pouvez toujours les relancer. Pour capturer de nouveaux contacts, achetez votre code.</p>
+      <h1 id="essai-titre" class="titre-connexion">Votre essai est terminé<span class="point">.</span></h1>
+      <p id="essai-texte" class="texte-doux">Vos contacts restent consultables et vous pouvez toujours les relancer. Pour capturer de nouveaux contacts, achetez votre code.</p>
       <div class="offres">
         <a class="offre offre--equipe" data-lien-achat-equipe href="#" target="_blank" rel="noopener"><span class="offre__pastille">Recommandé</span><strong>Équipe · 990 €</strong><span>utilisateurs illimités</span></a>
         <a class="offre" data-lien-achat href="#" target="_blank" rel="noopener"><strong>Solo · 690 €</strong><span>1 utilisateur</span></a>
@@ -266,6 +266,15 @@
         <dt class="sur-titre">Code d'activation</dt><dd id="reg-code"></dd>
         <dt id="reg-prenom-equipe-titre" class="sur-titre" hidden>Votre prénom dans l'équipe</dt><dd id="reg-prenom-equipe" hidden></dd>
       </dl>
+      <div id="reg-autre-code" hidden>
+        <button id="bouton-autre-code" class="bouton bouton-secondaire" type="button">Saisir un autre code</button>
+        <form id="formulaire-autre-code" class="formulaire" novalidate autocomplete="off" hidden>
+          <label class="champ">Nouveau code<span class="aide-champ">Solo, Équipe ou démonstration</span><input id="champ-autre-code" type="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="CDS-XXXX-XXXX ou CDE-XXXX-XXXX"></label>
+          <p id="autre-code-erreur" class="erreur-champ" role="alert" hidden></p>
+          <p class="texte-doux petit">Vos contacts et votre tableau sont conservés.</p>
+          <button id="bouton-activer-autre-code" class="bouton bouton-secondaire" type="submit">Activer ce code</button>
+        </form>
+      </div>
       <button id="bouton-mon-equipe" class="bouton bouton-principal" type="button" hidden>Mon équipe</button>
       <a id="reg-lien-tableau" class="bouton bouton-secondaire" href="#" target="_blank" rel="noopener">Ouvrir mon tableau</a>
       <button id="bouton-synchroniser" class="bouton bouton-secondaire" type="button">Synchroniser maintenant</button>

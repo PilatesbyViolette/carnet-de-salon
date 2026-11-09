@@ -6,9 +6,9 @@ import * as espace from './espace.js';
 import { synchroniser } from './file.js';
 import { jetonDansLeGeste, jetonValide, demanderJeton, deconnecter, compteConnu } from './connexion.js';
 import { doitMontrerAide } from './aide.js';
-import { descriptionActivation, roleEquipe } from './activation.js';
+import { descriptionActivation, roleEquipe, activer, messageCodeActive } from './activation.js';
 import { chargerContexteEquipe } from './equipe.js';
-import { prenomDe, ROLE_RESPONSABLE, ROLE_COMMERCIAL } from './equipe-regles.js';
+import { prenomDe, peutSaisirAutreCode, ROLE_RESPONSABLE, ROLE_COMMERCIAL } from './equipe-regles.js';
 
 // Champ de l'écran -> clé de l'onglet Réglages.
 const CHAMPS = {
@@ -54,12 +54,51 @@ async function adapterAuMode() {
   }
 }
 
+// Partie de l'écran qui dépend de l'activation : mode (prénom, « Mon équipe »), description du code, « Saisir un autre code ».
+async function rafraichirActivation() {
+  await adapterAuMode();
+  document.getElementById('reg-code').textContent = descriptionActivation();
+  document.getElementById('reg-autre-code').hidden = !peutSaisirAutreCode(roleEquipe());
+}
+
+// « Saisir un autre code » replié : bouton seul, champ vide, pas d'erreur.
+function replierAutreCode() {
+  document.getElementById('bouton-autre-code').hidden = false;
+  document.getElementById('formulaire-autre-code').hidden = true;
+  document.getElementById('champ-autre-code').value = '';
+  document.getElementById('autre-code-erreur').hidden = true;
+}
+
+// « Activer ce code » : essai → Solo ou Équipe, Solo → Équipe, sans vider le téléphone ni changer de tableau.
+// Jeton demandé dans le geste, puis synchronisation (mode Équipe préparé dans le tableau, code recopié dans Réglages).
+function surAutreCode(evenement) {
+  evenement.preventDefault();
+  const erreur = document.getElementById('autre-code-erreur');
+  const bouton = document.getElementById('bouton-activer-autre-code');
+  erreur.hidden = true;
+  bouton.disabled = true;
+  const jeton = jetonDansLeGeste().catch(() => {});
+  activer(document.getElementById('champ-autre-code').value)
+    .then(async () => {
+      await rafraichirActivation();
+      replierAutreCode();
+      message(messageCodeActive());
+      jeton.then(() => synchroniser());
+    })
+    .catch(async (e) => {
+      await rafraichirActivation().catch(() => {});
+      erreur.textContent = e.message;
+      erreur.hidden = false;
+    })
+    .finally(() => { bouton.disabled = false; });
+}
+
 // Remplit l'écran avec les valeurs locales.
 async function remplir() {
   for (const [id, cle] of Object.entries(CHAMPS)) document.getElementById(id).value = await espace.reglage(cle);
-  await adapterAuMode();
+  await rafraichirActivation();
+  replierAutreCode();
   document.getElementById('reg-compte').textContent = compteConnu() || 'non connecté';
-  document.getElementById('reg-code').textContent = descriptionActivation();
   const lien = document.getElementById('reg-lien-tableau');
   const adresse = await espace.lienTableau();
   lien.hidden = !adresse;
@@ -144,4 +183,10 @@ export function initReglages() {
   document.getElementById('bouton-synchroniser').addEventListener('click', surSynchroniser);
   document.getElementById('bouton-aide').addEventListener('click', () => afficher('aide'));
   document.getElementById('bouton-deconnexion').addEventListener('click', surDeconnexion);
+  document.getElementById('bouton-autre-code').addEventListener('click', () => {
+    document.getElementById('bouton-autre-code').hidden = true;
+    document.getElementById('formulaire-autre-code').hidden = false;
+    document.getElementById('champ-autre-code').focus();
+  });
+  document.getElementById('formulaire-autre-code').addEventListener('submit', surAutreCode);
 }

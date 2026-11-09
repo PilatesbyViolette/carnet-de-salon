@@ -101,7 +101,8 @@ Deux licences, même appli : Solo (690 €, 1 utilisateur) et Équipe (990 €, 
 - **Réglages** : ceux du responsable valent pour l'équipe (lecture seule chez les commerciaux) ; la signature d'un commercial reste sur son téléphone.
 - **Isolation** : `js/environnement.js` (base IndexedDB, préfixe de stockage, service worker, adresse des liens) ; tout le stockage du navigateur passe par `js/stockage.js`.
 - **Vente** : `ventes/Code.gs` (copie de référence du projet Apps Script) gère `LIEN_PAIEMENT_ID_EQUIPE` et envoie un code `equipe` avec le mode d'emploi du responsable.
-- **Tests** : `tests/equipe.test.html` (règles) ; `node tests/equipe.e2e.mjs` (bout en bout à deux personnes avec un faux Google ; `node tests/equipe.e2e.mjs equipe-test/` pour la copie de test).
+- **Changer de code** : Réglages, « Saisir un autre code » (essai, Solo ou démonstration) et pastille d'essai de l'accueil : essai → Solo ou Équipe, Solo → Équipe, sans vider le téléphone ni changer de tableau. Caché pour le responsable et pour le commercial invité.
+- **Tests** : `tests/equipe.test.html` (règles) ; `tests/activation.test.html` (changements de code, navigateur) ; `node tests/equipe.e2e.mjs` (bout en bout avec un faux Google, dont essai → Solo → Équipe ; codes de test ajoutés par le serveur du test seulement).
 
 ## À faire par Nicolas (mains ou téléphones)
 
