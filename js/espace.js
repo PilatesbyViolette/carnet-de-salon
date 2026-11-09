@@ -149,9 +149,21 @@ export async function envoyerReglagesSiBesoin() {
 }
 
 // Relit le tableau : copie locale des lignes de contacts et des réglages (« Essai commencé le » du tableau fait foi).
+// Un contact déjà envoyé (état « ecrit ») dont l'Id n'est plus dans le tableau a été supprimé ailleurs (autre
+// téléphone de l'équipe, ou directement dans Google Sheets) : il est retiré du téléphone. Un contact pas encore
+// envoyé n'est jamais retiré. Les contacts « ecrit » sont relevés AVANT la lecture du tableau : un contact écrit
+// pendant cette lecture n'est donc pas concerné.
 export async function rafraichirDepuisTableau() {
+  const dejaEnvoyes = (await base.tousLesContacts()).filter((c) => c.etat === 'ecrit').map((c) => c.id);
   const lignes = await drive.lireLignes(ids.tableau);
-  await base.ecrireReglage('_lignes', lignes.map(ligneVersContact));
+  const contacts = lignes.map(ligneVersContact);
+  await base.ecrireReglage('_lignes', contacts);
+  const presents = new Set(contacts.map((c) => c.id));
+  for (const id of dejaEnvoyes) {
+    if (presents.has(id)) continue;
+    const c = await base.lireContact(id);
+    if (c && c.etat === 'ecrit') await base.supprimerContact(id);
+  }
   const enAttente = await base.lireReglage('_reglagesAEnvoyer', false);
   const activationEnAttente = await base.lireReglage('_activationAEnvoyer', false);
   const commercial = estCommercial();

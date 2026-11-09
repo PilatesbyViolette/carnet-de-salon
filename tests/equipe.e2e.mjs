@@ -264,7 +264,7 @@ try {
   await attendreEcran(nico.page, 'connexion');
   await nico.page.click('#bouton-connexion');
   await attendreEcran(nico.page, 'reglages');
-  verifier('Responsable : champ « Votre prénom » visible', await visible(nico.page, '#reg-nom-bloc'));
+  verifier('Responsable : champ « Votre prénom » visible', await nico.page.waitForSelector('#reg-nom-bloc:not([hidden])', { timeout: 3000 }).then(() => true, () => false));
   verifier('Responsable : bouton « Mon équipe » visible', await visible(nico.page, '#bouton-mon-equipe'));
   verifier('Responsable : code Équipe masqué dans Réglages', /^CDE-••••-.{4} · Équipe, vous êtes responsable$/.test(await nico.page.textContent('#reg-code')), await nico.page.textContent('#reg-code'));
   await nico.page.fill('#reg-entreprise', 'Ateliers Dupont');
@@ -332,6 +332,7 @@ try {
   await capture(julie, 'e2e-3-rejoindre');
   await julie.page.click('#bouton-rejoindre-connexion');
   await julie.page.waitForSelector('#bouton-choisir-carnet:not([hidden])');
+  verifier('Rejoindre : aide « fenêtre Google blanche » sous le bouton', (await visible(julie.page, '#rejoindre-aide-picker')) && (await julie.page.textContent('#rejoindre-aide-picker')).includes('pas en navigation privée'));
   await julie.page.click('#bouton-choisir-carnet');
   await attendreEcran(julie.page, 'accueil');
   await julie.page.waitForTimeout(600);
@@ -460,6 +461,55 @@ try {
   verifier('Retour du réseau : les deux contacts ajoutés, une seule fois', noms.filter((n) => n === 'Hugo Leroy').length === 1 && noms.filter((n) => n === 'Inès Moreau').length === 1, noms.join());
   verifier('Retour du réseau : suppression du responsable appliquée (ligne retrouvée par Id)', !noms.includes('Sophie Laurent') && noms.includes('Bernard Petit') && noms.includes('Alain Bernard'), noms.join());
 
+  // ===== 6 bis. Suppression par le responsable d'un contact pris (et donc gardé en local) par le commercial =====
+  const nomBase = await julie.page.evaluate(async () => (await import(new URL('js/environnement.js', location.href).href)).ENV.nomBase);
+  const contactsLocaux = (page) => page.evaluate((nom) => new Promise((ok, ko) => {
+    const d = indexedDB.open(nom);
+    d.onsuccess = () => { const r = d.result.transaction('contacts').objectStore('contacts').getAll(); r.onsuccess = () => ok(r.result.map((c) => ({ id: c.id, nom: c.nom, etat: c.etat }))); };
+    d.onerror = () => ko(d.error);
+  }), nomBase);
+  // Contact pas encore envoyé chez le commercial (en erreur, absent du tableau) : ne doit jamais être retiré
+  await julie.page.evaluate((nom) => new Promise((ok) => {
+    const d = indexedDB.open(nom);
+    d.onsuccess = () => { const t = d.result.transaction('contacts', 'readwrite'); t.objectStore('contacts').put({ id: 'pas-envoye', creeLe: new Date().toISOString(), nom: 'Paul Attente', statut: 'Vérifié dans l\'appli', etat: 'erreur', essais: 3 }); t.oncomplete = ok; };
+  }), nomBase);
+  verifier('Avant suppression : Hugo Leroy gardé en local chez le commercial', (await contactsLocaux(julie.page)).some((c) => c.nom === 'Hugo Leroy' && c.etat === 'ecrit'));
+  await nico.page.click('[data-retour]:visible'); await attendreEcran(nico.page, 'accueil');
+  await nico.page.click('#bouton-tous-contacts'); await attendreEcran(nico.page, 'contacts');
+  await nico.page.selectOption('#filtre-membre', '');
+  await nico.page.waitForTimeout(200);
+  await nico.page.click('#liste-tous li:has-text("Hugo Leroy") .contact-bouton'); await attendreEcran(nico.page, 'fiche');
+  await nico.page.click('#fiche-supprimer');
+  await nico.page.click('#confirmation-oui');
+  await nico.page.waitForTimeout(300);
+  await nico.page.click('[data-retour]:visible').catch(() => {});
+  await nico.page.click('#bouton-reglages').catch(async () => { await nico.page.click('[data-retour]:visible'); await nico.page.click('#bouton-reglages'); });
+  await attendreEcran(nico.page, 'reglages');
+  await synchroniser(nico.page);
+  verifier('Suppression par le responsable : ligne retirée du tableau', !lignesContacts().some((l) => l[3] === 'Hugo Leroy'));
+  await synchroniser(julie.page);
+  const locauxJulie = await contactsLocaux(julie.page);
+  verifier('Synchro du commercial : contact supprimé retiré de sa base locale', !locauxJulie.some((c) => c.nom === 'Hugo Leroy'), JSON.stringify(locauxJulie));
+  verifier('Synchro du commercial : contact pas encore envoyé gardé', locauxJulie.some((c) => c.id === 'pas-envoye'));
+  verifier('Synchro du commercial : contacts encore dans le tableau gardés', locauxJulie.some((c) => c.nom === 'Alain Bernard'));
+  await julie.page.click('[data-retour]:visible'); await attendreEcran(julie.page, 'accueil');
+  await julie.page.waitForTimeout(300);
+  verifier('Accueil du commercial : compteur sans le contact supprimé', (await julie.page.textContent('#chiffre-total')) === '2', await julie.page.textContent('#chiffre-total'));
+  await julie.page.click('#bouton-tous-contacts'); await attendreEcran(julie.page, 'contacts');
+  await julie.page.waitForTimeout(300);
+  const tousJulie = await textes(julie.page, '#liste-tous .contact__nom');
+  verifier('Tous les contacts du commercial : plus de Hugo Leroy', !tousJulie.includes('Hugo Leroy') && tousJulie.includes('Alain Bernard'), tousJulie.join());
+  // Le contact factice ne doit pas gêner la suite (retrait du commercial)
+  await julie.page.evaluate((nom) => new Promise((ok) => {
+    const d = indexedDB.open(nom);
+    d.onsuccess = () => { const t = d.result.transaction('contacts', 'readwrite'); t.objectStore('contacts').delete('pas-envoye'); t.oncomplete = ok; };
+  }), nomBase);
+  await julie.page.click('[data-retour]:visible'); await attendreEcran(julie.page, 'accueil');
+  await julie.page.click('#bouton-reglages'); await attendreEcran(julie.page, 'reglages');
+  await nico.page.click('[data-retour]:visible').catch(() => {});
+  await attendreEcran(nico.page, 'accueil');
+  await nico.page.click('#bouton-reglages'); await attendreEcran(nico.page, 'reglages');
+
   // ===== 7. Retrait du commercial =====
   await nico.page.click('#bouton-mon-equipe'); await attendreEcran(nico.page, 'equipe');
   await nico.page.click('#liste-membres li:has-text("Julie") button');
@@ -469,7 +519,7 @@ try {
   verifier('Retrait : partage du tableau supprimé', !tableau().permissions.some((p) => p.emailAddress === 'julie.martin@exemple.com'));
   verifier('Retrait : partage du dossier supprimé', !dossierNico.permissions.some((p) => p.emailAddress === 'julie.martin@exemple.com'));
   verifier('Retrait : ligne de l\'onglet Équipe supprimée', !tableau().onglets.get('Équipe').lignes.some((l) => l[0] === 'julie.martin@exemple.com'));
-  verifier('Retrait : ses contacts restent dans le tableau', lignesContacts().some((l) => l[3] === 'Hugo Leroy'));
+  verifier('Retrait : ses contacts restent dans le tableau', lignesContacts().some((l) => l[3] === 'Alain Bernard'));
   await julie.page.click('#bouton-synchroniser');
   await attendreEcran(julie.page, 'activation');
   verifier('Retrait : le commercial retombe sur l\'écran d\'activation', true);
@@ -509,6 +559,15 @@ try {
   verifier('Solo : pas d\'onglet Équipe ni de Mode', !tSolo.onglets.has('Équipe') && !tSolo.onglets.get('Réglages').lignes.some((l) => l[0] === 'Mode'));
   await solo.page.click('[data-retour]:visible'); await attendreEcran(solo.page, 'accueil');
   verifier('Solo : pas de « pris par » ni de compteurs d\'équipe', !(await textes(solo.page, '#liste-derniers .contact__info')).some((t) => t.includes('pris par')) && !(await visible(solo.page, '#compteurs-equipe')));
+  // Solo : ligne supprimée directement dans Google Sheets, retirée du téléphone à la synchronisation suivante
+  verifier('Solo : contact gardé en local après envoi', (await contactsLocaux(solo.page)).some((c) => c.nom === 'Luc Solo' && c.etat === 'ecrit'));
+  tSolo.onglets.get('Contacts').lignes.splice(1, 1);
+  await solo.page.click('#bouton-reglages'); await attendreEcran(solo.page, 'reglages');
+  await synchroniser(solo.page);
+  verifier('Solo : ligne supprimée dans le tableau, contact retiré du téléphone', !(await contactsLocaux(solo.page)).some((c) => c.nom === 'Luc Solo'));
+  await solo.page.click('[data-retour]:visible'); await attendreEcran(solo.page, 'accueil');
+  await solo.page.waitForTimeout(300);
+  verifier('Solo : accueil sans le contact supprimé', !(await textes(solo.page, '#liste-derniers .contact__nom')).includes('Luc Solo') && (await solo.page.textContent('#chiffre-total')) === '0');
 
   // ===== 10. Isolation de la version de test =====
   if (CHEMIN.includes('equipe-test')) {
