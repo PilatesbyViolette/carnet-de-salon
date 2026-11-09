@@ -1,5 +1,5 @@
 // Stockage du navigateur (localStorage et sessionStorage) avec le préfixe de l'environnement
-// (vide en production, « equipeTest_ » dans la version de test). Un stockage indisponible ne bloque jamais l'appli.
+// (vide en production). Un stockage indisponible ne bloque jamais l'appli.
 
 import { ENV } from './environnement.js';
 

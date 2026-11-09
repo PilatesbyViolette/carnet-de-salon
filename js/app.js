@@ -22,8 +22,8 @@ import { ecrireLocal } from './stockage.js';
 
 // Lien d'achat Stripe Solo, sans code promo prérempli : le client saisit lui-même son code sur la page Stripe.
 const LIEN_ACHAT = 'https://buy.stripe.com/28E5kCdjp5bC87f20Oc3m00';
-// Lien d'achat Équipe : provisoire (page produit), à remplacer par le lien Stripe Équipe.
-const LIEN_ACHAT_EQUIPE = 'https://optimisons.ai/carnet-de-salon/';
+// Lien d'achat Stripe Équipe, sans code promo prérempli.
+const LIEN_ACHAT_EQUIPE = 'https://buy.stripe.com/8x24gydjp6fGbjr48Wc3m01';
 
 // Met les liens d'achat sur tous les liens « Acheter » (Solo et Équipe).
 function brancherLiensAchat() {

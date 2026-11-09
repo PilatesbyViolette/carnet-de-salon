@@ -1,8 +1,8 @@
 // Service worker minimal : garde en cache les fichiers de l'appli pour qu'elle s'ouvre sans réseau.
-// « Cache d'abord » pour la liste ci-dessous uniquement ; tout le reste (Google, GIS, Picker, test/, equipe-test/) passe par le réseau.
+// « Cache d'abord » pour la liste ci-dessous uniquement ; tout le reste (Google, GIS, Picker, test/) passe par le réseau.
 // À CHAQUE MODIFICATION D'UN FICHIER DE L'APPLI : changer VERSION, sinon les téléphones garderont l'ancienne version.
 
-const VERSION = 'carnet-2026-11-09-equipe-2';
+const VERSION = 'carnet-2026-11-09-equipe-prod';
 const FICHIERS = [
   '/',
   '/index.html',

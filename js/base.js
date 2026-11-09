@@ -6,7 +6,7 @@ export const A_VERIFIER = 'À vérifier';
 
 import { ENV } from './environnement.js';
 
-const NOM_BASE = ENV.nomBase; // « carnet » en production, « carnet-equipe-test » dans la version de test
+const NOM_BASE = ENV.nomBase; // « carnet » en production
 const VERSION_BASE = 1;
 let promesseBase = null;
 
