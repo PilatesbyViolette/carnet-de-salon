@@ -203,7 +203,12 @@ google.picker = {
   }
 };`;
 
+const signauxOptimisons = []; // signaux d'essai/achat reçus par le faux Optimisons.ai
 async function brancherFauxGoogle(ctx) {
+  await ctx.route(/script\.google\.com\/macros\//, (r) => {
+    try { signauxOptimisons.push(JSON.parse(r.request().postData() || '{}')); } catch (e) { signauxOptimisons.push({ illisible: true }); }
+    return r.fulfill({ status: 200, headers: { 'access-control-allow-origin': '*' }, contentType: 'application/json', body: '{"ok":true}' });
+  });
   await ctx.route(/accounts\.google\.com\/gsi\/client/, (r) => r.fulfill({ contentType: 'text/javascript', body: FAUX_GIS }));
   await ctx.route(/apis\.google\.com\/js\/api\.js/, (r) => r.fulfill({ contentType: 'text/javascript', body: FAUX_PICKER }));
   await ctx.route(/googleapis\.com|fake\.picker/, async (r) => {
@@ -570,6 +575,11 @@ try {
   await saisirSansCarte(solo.page, { nom: 'Luc Solo', email: 'luc@exemple.com' });
   await solo.page.click('#bouton-reglages'); await attendreEcran(solo.page, 'reglages');
   await synchroniser(solo.page);
+  await solo.page.waitForTimeout(300);
+  const signalSolo = signauxOptimisons.find((x) => x.email === 'solo@exemple.com' && x.type === 'essai');
+  verifier('Signal : essai envoyé à Optimisons.ai après connexion (e-mail, début, relance, version, jeton), sans contact',
+    !!signalSolo && signalSolo.relance === true && !!signalSolo.debut && !!signalSolo.jeton && !!signalSolo.version
+      && 'salon' in signalSolo && 'entreprise' in signalSolo && !('nom' in signalSolo) && !('contacts' in signalSolo), JSON.stringify(signalSolo));
   const tSolo = [...fichiers.values()].find((f) => f.onglets && f.owner === 'solo@exemple.com');
   const lSolo = tSolo.onglets.get('Contacts').lignes[1];
   verifier('Solo : ligne écrite comme avant (Pris par = e-mail)', lSolo[3] === 'Luc Solo' && lSolo[2] === 'solo@exemple.com', JSON.stringify(lSolo));

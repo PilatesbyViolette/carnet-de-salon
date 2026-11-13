@@ -5,7 +5,7 @@ import * as base from './base.js';
 import * as drive from './drive.js';
 import * as espace from './espace.js';
 import { synchroniser, demarrerFile, MESSAGE_ATTENTE } from './file.js';
-import { demanderJeton, compteConnu } from './connexion.js';
+import { demanderJeton, compteConnu, jetonActuel } from './connexion.js';
 import { initAccueil } from './accueil.js';
 import { initNouveau } from './nouveau.js';
 import { initVerifier } from './verifier.js';
@@ -19,6 +19,12 @@ import { initRejoindre, capterInvitation } from './rejoindre.js';
 import { ROLE_COMMERCIAL, ErreurEquipe } from './equipe-regles.js';
 import { ENV } from './environnement.js';
 import { ecrireLocal } from './stockage.js';
+import { initSignal, viderFileSignaux } from './signal.js';
+
+// Version de l'appli (même valeur que VERSION dans sw.js) : jointe au signal d'essai vers Optimisons.ai.
+const VERSION = 'carnet-2026-11-09-equipe-prod-5';
+// Signal discret de lancement d'essai (et d'achat) vers Optimisons.ai : aucune donnée de contact, voir js/signal.js.
+const URL_SIGNAL = 'https://script.google.com/macros/s/AKfycbzYCsnnfv4-2oSdcbYWMOg9ViQdqqcsCPfobHy5126llYFKqAQfpM0VfT50bFllXt_M/exec';
 
 // Lien d'achat Stripe Solo, sans code promo prérempli : le client saisit lui-même son code sur la page Stripe.
 const LIEN_ACHAT = 'https://buy.stripe.com/28E5kCdjp5bC87f20Oc3m00';
@@ -115,6 +121,7 @@ function brancherBandeaux() {
     if (e.detail.retrait) retirerDeLEquipe(e.detail.retrait).catch((err) => montrerErreur('Équipe : ' + err.message));
     else if (e.detail.erreur) montrerErreur('Envoi vers Google : ' + e.detail.erreur);
     else if (e.detail.attente) message(MESSAGE_ATTENTE); // 5xx persistant : message bref, sans alarme
+    else if (e.detail.fini) viderFileSignaux(); // signal d'essai/achat en attente : part dès qu'un jeton est valable
   });
 }
 
@@ -124,6 +131,7 @@ async function demarrer() {
   enregistrerServiceWorker();
   enregistrerEcran('connexion', {});
   brancherLiensAchat();
+  initSignal({ url: URL_SIGNAL, email: compteConnu, jeton: jetonActuel, reglage: espace.reglage, version: VERSION, envoyer: (adresse, options) => fetch(adresse, options) });
   initActivation(() => chargerContexteEquipe().then(ouvrirApresActivation)); // essai → Équipe : rôle responsable sans réinstaller
   initRelances();
   initAccueil();
@@ -141,6 +149,7 @@ async function demarrer() {
   await chargerActivation();
   await chargerContexteEquipe();
   demarrerFile();
+  viderFileSignaux(); // essai déjà en cours ou achat en attente : envoi silencieux à l'ouverture
   if (invitation) { afficher('rejoindre'); return; }
   ouvrirEcranHabituel();
 }

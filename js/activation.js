@@ -11,6 +11,7 @@ import * as base from './base.js';
 import { enregistrerEcran, montrerErreur, message } from './interface.js';
 import { dateIso, dateCourte } from './dates.js';
 import { lireLocal, ecrireLocal, retirerLocal } from './stockage.js';
+import { signalerEssai, signalerAchat } from './signal.js';
 
 export const CLE_CODE = 'Code d\'activation';
 export const CLE_ESSAI = 'Essai commencé le';
@@ -119,7 +120,9 @@ function programmerFin() {
 export async function chargerActivation() {
   const memo = lireActivation();
   if (memo && memo.essai) {
-    const fin = Date.parse(await debutEssaiGratuit()) + DUREE_ESSAI_HEURES * HEURE_MS;
+    const debut = await debutEssaiGratuit();
+    signalerEssai(debut); // signal au lancement et pour un essai déjà en cours (une seule fois, voir signal.js)
+    const fin = Date.parse(debut) + DUREE_ESSAI_HEURES * HEURE_MS;
     etat = { code: '', type: 'essai', libelle: 'essai gratuit', fin, role: '' };
   } else {
     etat = await etatCode(memo);
@@ -188,6 +191,7 @@ export async function activer(saisie) {
   ecrireLocal(LOCAL_ACTIVATION, JSON.stringify({ code: codeAffiche(normal), empreinte: valeur }));
   await chargerActivation();
   signaler();
+  if (trouverCode(valeur).type === 'achat') signalerAchat(); // signal discret d'achat (même file que l'essai)
   if (essaiTermine()) throw new Error('Ce code d\'essai est déjà terminé. Achetez un code pour continuer à capturer.');
 }
 
